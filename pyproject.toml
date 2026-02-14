@@ -1,0 +1,37 @@
+[project]
+name = "fin-db"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Cedric McKeever",email = "cedricmckeever@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pandas (>=1.3.5,<3.0.0)",
+    "colorlog (>=6.10.1,<7.0.0)",
+    "yfinance (>=1.1.0,<2.0.0)"
+]
+
+# Optional group for Refinitiv SDK
+[tool.poetry.group.refinitiv]
+optional = true
+
+[tool.poetry.group.refinitiv.dependencies]
+refinitiv-data = ">=1.6.2,<2.0.0"
+
+# Optional group for historical setup
+[tool.poetry.group.setup]
+optional = true
+
+[tool.poetry.group.setup.dependencies]
+openai = ">=2.17.0,<3.0.0"
+pydantic = ">=2.12.5,<3.0.0"
+ipykernel = ">=7.1.0,<8.0.0"
+
+[tool.poetry]
+packages = [{ include = "fin_db", from = "src" }]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
