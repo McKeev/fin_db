@@ -3,7 +3,7 @@ from . import constants
 
 # Expose key components at the package level
 from .pullers import LSEGPuller, YFinPuller
-from .helpers import setup_logger
+from .helpers import setup_logger, instrument_id
 
 __all__ = [
     # Submodules
@@ -12,5 +12,6 @@ __all__ = [
     'LSEGPuller',
     'YFinPuller',
     # Functions
-    'setup_logger'
+    'setup_logger',
+    'instrument_id'
 ]
