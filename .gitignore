@@ -1,5 +1,7 @@
 # Poject Specific
 /data
+*.dbdiagram
+/db/sandbox/sandbox.sql
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -139,6 +141,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
 .envrc
 .venv
 env/
