@@ -38,7 +38,7 @@ done
 run_file() {
   local file="$1"
   echo "==> Running $file"
-  psql "host=$DB_HOST port=$DB_PORT user=$DBUSER_MIGRATOR dbname=$DB_NAME" \
+  psql "host=$DB_HOST port=$DB_PORT user=$DBUSER_ADMIN dbname=$DB_NAME" \
     -v ON_ERROR_STOP=1 \
     -f "$file"
 }

@@ -4,7 +4,7 @@
 
 - `000_bootstrap.sql` is first-time admin setup.
 - `001_*.sql`, `002_*.sql`, ... are normal schema/data migrations.
-- `run.sh` is the normal migration runner (uses migrator role and `db/.env.local`).
+- `run.sh` is the normal migration runner (uses admin role and `db/.env.local`).
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=fin_db
-DBUSER_MIGRATOR=fin_db_migrator
+DBUSER_ADMIN=fin_db_admin
 ```
 
 - Password is stored in `~/.pgpass` (recommended).
