@@ -9,8 +9,8 @@ Constants used throughout the fin_db package.
 from pathlib import Path
 from typing import TypedDict
 
-# Root directory of package
-ROOT_DIR = Path(__file__).parent.parent.parent
+# Root directory of package (/fin_db)
+ROOT_DIR = Path(__file__).parent
 
 # Source to identifier mapping for different data sources
 SOURCE_IDENTIFIERS = {
