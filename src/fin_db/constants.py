@@ -12,6 +12,12 @@ from typing import TypedDict
 # Root directory of package
 ROOT_DIR = Path(__file__).parent.parent.parent
 
+# Source to identifier mapping for different data sources
+SOURCE_IDENTIFIERS = {
+    'YAHOO': 'yfin',
+    'LSEG': 'ric',
+}
+
 
 class FieldConfig(TypedDict):
     """Configuration for a financial field across different data sources."""
