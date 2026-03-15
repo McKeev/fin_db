@@ -15,7 +15,7 @@ CREATE TABLE "identifiers" (
   "isin" varchar UNIQUE,
   "ric" varchar UNIQUE,
   "yfin" varchar UNIQUE,
-  "etoro" varchar UNIQUE
+  "etoro" integer UNIQUE
 );
 
 CREATE TABLE "instrument_attributes" (

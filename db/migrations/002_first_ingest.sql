@@ -15,7 +15,7 @@ CREATE TEMP TABLE staging_equities (
     name TEXT,
     isin TEXT,
     yfinance_ticker TEXT,
-    etoro_iid TEXT,
+    etoro_iid INTEGER,
     ric TEXT,
     exchange TEXT,
     country_hq TEXT,
