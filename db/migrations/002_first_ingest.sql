@@ -15,7 +15,7 @@ CREATE TEMP TABLE staging_equities (
     name TEXT,
     isin TEXT,
     yfinance_ticker TEXT,
-    etoro_ticker TEXT,
+    etoro_iid TEXT,
     ric TEXT,
     exchange TEXT,
     country_hq TEXT,
@@ -24,7 +24,7 @@ CREATE TEMP TABLE staging_equities (
 ) ON COMMIT DROP;
 
 -- Load data from the CSV file into the staging table
-\copy staging_equities (instrument_id, name, isin, yfinance_ticker, etoro_ticker, ric, exchange, country_hq, currency, gics_code) FROM 'initial_setup/equities_final.csv' WITH (FORMAT csv, HEADER true, DELIMITER ',');
+\copy staging_equities (instrument_id, name, isin, yfinance_ticker, etoro_iid, ric, exchange, country_hq, currency, gics_code) FROM 'db/initial_setup/equities_final.csv' WITH (FORMAT csv, HEADER true, DELIMITER ',');
 
 -- Create a temporary staging table to load the observations CSV data
 CREATE TEMP TABLE staging_observations (
@@ -57,7 +57,7 @@ SELECT
     isin,
     ric,
     yfinance_ticker AS yfin,
-    NULL as etoro -- Fill in later when I add etoro support
+    etoro_iid AS etoro
 FROM staging_equities;
 
 \echo '----------- Insert data into `instrument_attributes` table -----------'
