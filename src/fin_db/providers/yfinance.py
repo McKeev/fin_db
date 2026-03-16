@@ -160,7 +160,8 @@ class YFinPuller:
             auto_adjust=False,
             actions=True,
             progress=False,
-            multi_level_index=True
+            multi_level_index=True,
+            threads=False  # Slower but more reliable for large batches
         )
         # Basic validation to check if data looks correct
         if data.empty or data.isna().all().all():
