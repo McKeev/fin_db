@@ -10,6 +10,7 @@ This script serves as an easier interface for the Etoro API
 # ============================== IMPORTS =====================================
 # ----------------------------------------------------------------------------
 # First Party Imports
+import datetime as dt
 import requests
 import uuid
 # Third Party Imports
@@ -46,7 +47,26 @@ class EtoroAPI:
         self,
         lookup,
         field: str = 'instrumentId',
-    ):
+    ) -> dict:
+        """
+        Searches for an instrument based on the provided lookup value and
+        field.
+        More info on the API endpoint here:
+        https://api-portal.etoro.com/api-reference/
+        market-data/search-for-instruments
+
+        Parameters:
+        -----------
+        lookup : str or int
+            The value to search for.
+        field : str, optional
+            The field to search in, by default 'instrumentId'.
+
+        Returns:
+        --------
+        dict
+            The instrument data if found, otherwise raises an exception.
+        """
         if field == 'instrumentId':
             # This field uses int to lookup
             try:
@@ -82,6 +102,67 @@ class EtoroAPI:
                 "API request failed with status code "
                 f"{response.status_code}: {response.text}"
             )
+
+    def trade_history(
+        self,
+        start_date: str | dt.datetime | dt.date,
+    ) -> list[dict]:
+        """"
+        Retrieves the trade history starting from the specified date.
+        More info on the API endpoint here:
+        https://api-portal.etoro.com/api-reference/
+        trading--real/list-trading-history
+
+        Parameters:
+        -----------
+        start_date : str or datetime or date
+            The starting date for retrieving trade history. Can be a string in
+            ISO format (YYYY-MM-DD) or a datetime/date object.
+
+        Returns:
+        --------
+        list[dict]
+            A list of dictionaries containing the historical trades data with
+            the following format:
+            {
+                "netProfit": 123,
+                "closeRate": 123,
+                "closeTimestamp": "2023-11-07T05:31:56Z",
+                "positionId": 123,
+                "instrumentId": 123,
+                "isBuy": true,
+                "leverage": 123,
+                "openRate": 123,
+                "openTimestamp": "2023-11-07T05:31:56Z",
+                "stopLossRate": 123,
+                "takeProfitRate": 123,
+                "trailingStopLoss": true,
+                "orderId": 123,
+                "socialTradeId": 123,
+                "parentPositionId": 123,
+                "investment": 123,
+                "initialInvestment": 123,
+                "fees": 123,
+                "units": 123
+            }
+
+        """
+        if isinstance(start_date, str):
+            try:
+                start_date = dt.datetime.fromisoformat(start_date)
+            except ValueError:
+                raise ValueError(
+                    "start_date string must be in ISO format: YYYY-MM-DD"
+                )
+        elif isinstance(start_date, dt.datetime):
+            start_date = start_date.date()
+
+        url = 'https://public-api.etoro.com/api/v1/trading/info/trade/history'
+        params = {
+            'minDate': start_date.isoformat()
+        }
+        response = requests.get(url, headers=self._headers(), params=params)
+        return response.json()
 
     def _headers(self):
         """Returns the headers for the request"""
