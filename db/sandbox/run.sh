@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Repo root assumed as current working directory
-ENV_FILE="${ENV_FILE:-db/.env.local}"
+ENV_FILE="${ENV_FILE:-db/.env}"
 
 if [ -f "$ENV_FILE" ]; then
   set -a
@@ -15,7 +15,7 @@ fi
 
 # Optional fallbacks if not set in env file
 DB_HOST="${DB_HOST:-localhost}"
-DB_PORT="${DB_PORT:-5432}"
+DB_PORT="${DB_PORT:-5433}"
 DB_NAME="${DB_NAME:-fin_db}"
 DBUSER_MIGRATOR="${DBUSER_MIGRATOR:-fin_db_migrator}"
 

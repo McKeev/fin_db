@@ -9,14 +9,7 @@
 ## Prerequisites
 
 - Postgres is running.
-- `db/.env.local` exists with:
-
-```bash
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=fin_db
-DBUSER_ADMIN=fin_db_admin
-```
+- `db/.env` exists with the template from `db/.env`
 
 - Password is stored in `~/.pgpass` (recommended).
 
@@ -25,7 +18,19 @@ DBUSER_ADMIN=fin_db_admin
 Run bootstrap manually as admin (not via `run.sh`):
 
 ```bash
-psql -d postgres -f db/migrations/000_bootstrap.sql
+set -a
+. db/.env
+set +a
+
+psql "host=$DB_HOST port=$DB_PORT user=postgres dbname=postgres" \
+  -v DB_NAME="$DB_NAME" \
+  -v DBUSER_ADMIN="$DBUSER_ADMIN" \
+  -v DBUSER_APP="$DBUSER_APP" \
+  -v DBUSER_READ="$DBUSER_READ" \
+  -v DBUSER_ADMIN_PASSWORD="$DBUSER_ADMIN_PASSWORD" \
+  -v DBUSER_APP_PASSWORD="$DBUSER_APP_PASSWORD" \
+  -v DBUSER_READ_PASSWORD="$DBUSER_READ_PASSWORD" \
+  -f db/migrations/000_bootstrap.sql
 ```
 
 Why: bootstrap includes admin operations (database/role setup).
@@ -53,7 +58,7 @@ bash db/migrations/run.sh all
 Use another env file:
 
 ```bash
-ENV_FILE=db/.env.local bash db/migrations/run.sh 001
+ENV_FILE=db/.env bash db/migrations/run.sh 001
 ```
 
 ## Notes

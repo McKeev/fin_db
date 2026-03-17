@@ -1,43 +1,50 @@
 -- This SQL file is used to bootstrap the database for the first time.
 -- Run with `psql -f db/migrations/000_bootstrap.sql` to create the database and the associated roles.
 
--- CHANGE PASSWORDS for the roles before running this file!!!!!!!!!!
+-- Required psql variables:
+--   DB_NAME
+--   DBUSER_ADMIN
+--   DBUSER_APP
+--   DBUSER_READ
+--   DBUSER_ADMIN_PASSWORD
+--   DBUSER_APP_PASSWORD
+--   DBUSER_READ_PASSWORD
 
 SELECT pg_terminate_backend(pid)
 FROM pg_stat_activity
-WHERE datname = 'fin_db' AND pid <> pg_backend_pid();
+WHERE datname = :'DB_NAME' AND pid <> pg_backend_pid();
 
-DROP DATABASE IF EXISTS fin_db;
-DROP ROLE IF EXISTS fin_db_admin;
-DROP ROLE IF EXISTS fin_db_app;
-DROP ROLE IF EXISTS fin_db_reader;
+DROP DATABASE IF EXISTS :"DB_NAME";
+DROP ROLE IF EXISTS :"DBUSER_ADMIN";
+DROP ROLE IF EXISTS :"DBUSER_APP";
+DROP ROLE IF EXISTS :"DBUSER_READ";
 
 
 -- --------------------------------------------------
 -- Roles
 -- --------------------------------------------------
 
-CREATE ROLE fin_db_admin LOGIN PASSWORD '***';
-CREATE ROLE fin_db_app LOGIN PASSWORD '***';
-CREATE ROLE fin_db_reader LOGIN PASSWORD '***';
+CREATE ROLE :"DBUSER_ADMIN" LOGIN PASSWORD :'DBUSER_ADMIN_PASSWORD';
+CREATE ROLE :"DBUSER_APP" LOGIN PASSWORD :'DBUSER_APP_PASSWORD';
+CREATE ROLE :"DBUSER_READ" LOGIN PASSWORD :'DBUSER_READ_PASSWORD';
 
 
 -- --------------------------------------------------
 -- Create and connect to the database
 -- --------------------------------------------------
 
-CREATE DATABASE fin_db OWNER fin_db_admin;
-\connect fin_db
+CREATE DATABASE :"DB_NAME" OWNER :"DBUSER_ADMIN";
+\connect :DB_NAME
 
 
 -- --------------------------------------------------
 -- Database access
 -- --------------------------------------------------
 
-REVOKE ALL ON DATABASE fin_db FROM PUBLIC;
+REVOKE ALL ON DATABASE :"DB_NAME" FROM PUBLIC;
 
-GRANT CONNECT ON DATABASE fin_db TO fin_db_app;
-GRANT CONNECT ON DATABASE fin_db TO fin_db_reader;
+GRANT CONNECT ON DATABASE :"DB_NAME" TO :"DBUSER_APP";
+GRANT CONNECT ON DATABASE :"DB_NAME" TO :"DBUSER_READ";
 
 
 -- --------------------------------------------------
@@ -48,37 +55,37 @@ REVOKE ALL ON SCHEMA public FROM PUBLIC;
 
 
 -- app and reader can access schema objects
-GRANT USAGE ON SCHEMA public TO fin_db_app;
-GRANT USAGE ON SCHEMA public TO fin_db_reader;
+GRANT USAGE ON SCHEMA public TO :"DBUSER_APP";
+GRANT USAGE ON SCHEMA public TO :"DBUSER_READ";
 
-ALTER SCHEMA public OWNER TO fin_db_admin;
+ALTER SCHEMA public OWNER TO :"DBUSER_ADMIN";
 
 
 -- --------------------------------------------------
 -- Default privileges (future tables)
 -- --------------------------------------------------
 
-ALTER DEFAULT PRIVILEGES FOR ROLE fin_db_admin
+ALTER DEFAULT PRIVILEGES FOR ROLE :"DBUSER_ADMIN"
 IN SCHEMA public
 GRANT SELECT, INSERT, UPDATE, DELETE
-ON TABLES TO fin_db_app;
+ON TABLES TO :"DBUSER_APP";
 
-ALTER DEFAULT PRIVILEGES FOR ROLE fin_db_admin
+ALTER DEFAULT PRIVILEGES FOR ROLE :"DBUSER_ADMIN"
 IN SCHEMA public
 GRANT SELECT
-ON TABLES TO fin_db_reader;
+ON TABLES TO :"DBUSER_READ";
 
 
 -- --------------------------------------------------
 -- Default privileges (future sequences)
 -- --------------------------------------------------
 
-ALTER DEFAULT PRIVILEGES FOR ROLE fin_db_admin
+ALTER DEFAULT PRIVILEGES FOR ROLE :"DBUSER_ADMIN"
 IN SCHEMA public
 GRANT USAGE, SELECT
-ON SEQUENCES TO fin_db_app;
+ON SEQUENCES TO :"DBUSER_APP";
 
-ALTER DEFAULT PRIVILEGES FOR ROLE fin_db_admin
+ALTER DEFAULT PRIVILEGES FOR ROLE :"DBUSER_ADMIN"
 IN SCHEMA public
 GRANT SELECT
-ON SEQUENCES TO fin_db_reader;
+ON SEQUENCES TO :"DBUSER_READ";

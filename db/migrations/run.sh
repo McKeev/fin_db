@@ -7,10 +7,10 @@ set -euo pipefail
 #   ./db/migrations/run.sh all
 #
 # Optional:
-#   ENV_FILE=db/.env.local ./db/migrations/run.sh 001
+#   ENV_FILE=db/.env ./db/migrations/run.sh 001
 
 # Repo root assumed as current working directory
-ENV_FILE="${ENV_FILE:-db/.env.local}"
+ENV_FILE="${ENV_FILE:-db/.env}"
 
 if [ -f "$ENV_FILE" ]; then
   set -a
@@ -30,7 +30,6 @@ for arg in "$@"; do
   if [[ "$arg" == 000* ]]; then
     echo "Refusing to run bootstrap via run.sh."
     echo "Run bootstrap manually as admin:"
-    echo "  psql -d postgres -f db/migrations/000_bootstrap.sql"
     exit 1
   fi
 done

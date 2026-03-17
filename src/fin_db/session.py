@@ -56,7 +56,7 @@ def open_session(
         user=user,
         password=password,
         host=host,
-        port=5432,
+        port=5433,
     )
     logger.info('Database session opened successfully.')
 

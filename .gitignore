@@ -2,6 +2,7 @@
 /data
 *.dbdiagram
 /db/sandbox/sandbox.sql
+/.pgdata
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
