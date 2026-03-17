@@ -18,7 +18,7 @@ Table identifiers {
   isin varchar [unique]
   ric varchar [unique]
   yfin varchar [unique]
-  etoro varchar [unique]
+  etoro integer [unique]
 
   Indexes {
   ticker [name: "idx_identifiers_ticker"]
@@ -43,9 +43,19 @@ Table observations {
   instrument_id char(20) [pk, ref: > instruments.instrument_id]
   field varchar [pk] // e.g. 'price', 'volume', etc.
   date date [pk]
-  source varchar [not null] // tracks data source, can be overwritten with better source
+  source varchar [pk] // tracks data source, can be overwritten with better source
   value numeric(19,4) [not null]
   scale numeric(19,4) [not null] // e.g. 1.0 for price, 0.01 for percentage, etc.
+
+  Indexes {
+    (instrument_id, field, date) [name: "idx_obs_lookup"]
+  }
+}
+
+Table sources {
+  name varchar [pk] // e.g. 'YAHOO', 'LSEG', etc..
+  priority integer [not null] // lower number = higher priority, used for source selection logic
+  identifier varchar [not null] // e.g. 'yfin', 'lseg', etc., used for mapping to identifiers table
 }
 
 // This table is used for updating the time series data (observations)

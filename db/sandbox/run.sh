@@ -19,6 +19,6 @@ DB_PORT="${DB_PORT:-5432}"
 DB_NAME="${DB_NAME:-fin_db}"
 DBUSER_MIGRATOR="${DBUSER_MIGRATOR:-fin_db_migrator}"
 
-psql "host=$DB_HOST port=$DB_PORT user=$DBUSER_MIGRATOR dbname=$DB_NAME" \
+psql "host=$DB_HOST port=$DB_PORT user=$DBUSER_ADMIN dbname=$DB_NAME" \
   -v ON_ERROR_STOP=1 \
   -f db/sandbox/sandbox.sql

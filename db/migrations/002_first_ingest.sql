@@ -29,7 +29,7 @@ CREATE TEMP TABLE staging_equities (
 -- Create a temporary staging table to load the observations CSV data
 CREATE TEMP TABLE staging_observations (
     date DATE,
-    ric TEXT,
+    identifier TEXT,
     source TEXT,
     field TEXT,
     scale NUMERIC,
@@ -37,7 +37,13 @@ CREATE TEMP TABLE staging_observations (
 ) ON COMMIT DROP;
 
 -- Load data from the CSV file into the staging table
-\copy staging_observations (date, ric, source, field, scale, value) FROM 'data/lseg_data.csv' WITH (FORMAT csv, HEADER true, DELIMITER ',');
+\copy staging_observations (date, identifier, source, field, scale, value) FROM 'data/bootstrap_data.csv' WITH (FORMAT csv, HEADER true, DELIMITER ',');
+
+\echo '------------------ Insert data into `sources` table ------------------'
+INSERT INTO sources (name, priority, identifier)
+VALUES ('LSEG', 1, 'ric'),
+       ('YAHOO', 2, 'yfin'),
+       ('ETORO', 3, 'etoro');
 
 \echo '---------------- Insert data into `instruments` table ----------------'
 INSERT INTO instruments
@@ -91,8 +97,23 @@ SELECT
     o.scale
 FROM staging_observations AS o
 JOIN identifiers AS i -- Use join to replace ric with instrument_id
-USING(ric)
-WHERE o.value IS NOT NULL; -- Filter out null values
+ON o.identifier = i.ric
+WHERE o.value IS NOT NULL -- Filter out null values
+    AND o.source = 'LSEG';
+
+INSERT INTO observations
+SELECT
+    i.instrument_id,
+    o.field,
+    o.date,
+    o.source,
+    o.value,
+    o.scale
+FROM staging_observations AS o
+JOIN identifiers AS i -- Use join to replace ric with instrument_id
+ON o.identifier = i.yfin
+WHERE o.value IS NOT NULL -- Filter out null values
+    AND o.source = 'YAHOO';
 
 \echo '----------------- Insert data into `updates` table -------------------'
 INSERT INTO updates

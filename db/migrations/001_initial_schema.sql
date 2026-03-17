@@ -1,6 +1,6 @@
 -- SQL dump generated using DBML (dbml.dbdiagram.io)
 -- Database: PostgreSQL
--- Generated at: 2026-02-24T13:24:05.510Z
+-- Generated at: 2026-03-16T23:51:46.683Z
 
 CREATE TABLE "instruments" (
   "instrument_id" char(20) PRIMARY KEY,
@@ -29,10 +29,16 @@ CREATE TABLE "observations" (
   "instrument_id" char(20),
   "field" varchar,
   "date" date,
-  "source" varchar NOT NULL,
+  "source" varchar,
   "value" numeric(19,4) NOT NULL,
   "scale" numeric(19,4) NOT NULL,
-  PRIMARY KEY ("instrument_id", "field", "date")
+  PRIMARY KEY ("instrument_id", "field", "date", "source")
+);
+
+CREATE TABLE "sources" (
+  "name" varchar PRIMARY KEY,
+  "priority" integer NOT NULL,
+  "identifier" varchar NOT NULL
 );
 
 CREATE TABLE "updates" (
@@ -53,6 +59,8 @@ CREATE INDEX "idx_identifiers_ric" ON "identifiers" ("ric");
 CREATE INDEX "idx_identifiers_yfin" ON "identifiers" ("yfin");
 
 CREATE INDEX "idx_identifiers_etoro" ON "identifiers" ("etoro");
+
+CREATE INDEX "idx_obs_lookup" ON "observations" ("instrument_id", "field", "date");
 
 CREATE INDEX "idx_updates_source_frequency_instrument" ON "updates" ("source", "frequency", "instrument_id");
 
