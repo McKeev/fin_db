@@ -8,7 +8,7 @@
 
 BEGIN;
 \echo '---------------------------- Create view -----------------------------'
-CREATE VIEW canonical_obs AS
+CREATE OR REPLACE VIEW canonical_obs AS
 SELECT DISTINCT ON (o.instrument_id, o.field, o.date)
     o.instrument_id,
     o.field,
@@ -23,6 +23,6 @@ ORDER BY
     o.instrument_id,
     o.field,
     o.date,
-    s.priority;  -- lower number = higher priority
+    s.priority NULLS LAST;  -- lower number = higher priority
 
 COMMIT;
