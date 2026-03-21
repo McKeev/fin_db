@@ -54,7 +54,7 @@ class YFinPuller:
         self,
         fields: str | list[str],
         return_failed: bool = False
-    ) -> pd.DataFrame | tuple[pd.DataFrame, list[str]]:
+    ) -> pd.DataFrame | tuple[pd.DataFrame, dict[str, str]]:
         """
         Allows pulling historical data for a list of tickers and fields, with
         built-in batching and retry logic and data validation to handle yfin
@@ -70,9 +70,10 @@ class YFinPuller:
         pd.DataFrame
             A DataFrame containing the pulled data (long format), with columns
             for 'identifier', 'field', 'date', 'source', 'value' and 'scale'.
-        list[str]
-            If return_failed is True, also returns a list of tickers for which
-            the pull failed (e.g. due to API issues).
+        dict[str, str]
+            If return_failed is True, also returns a dictionary of tickers for
+            which the pull failed (e.g. due to API issues) and their error
+            messages.
         """
         if isinstance(fields, str):
             fields = [fields]
@@ -85,32 +86,40 @@ class YFinPuller:
 
         for attempt in range(1, self.max_attempts + 1):
             logger.info(f"Attempt {attempt} of {self.max_attempts}")
-            failed_tickers = []
+            failed_tickers = dict()
 
             for i, batch in enumerate(batches):
+                time.sleep(SLEEP)
                 logger.info(f"Pulling batch {i + 1} of "
                             f"{len(batches)}: {batch}")
                 try:
                     data, failed = self._yfin_pull(batch, fields)
                     frames.append(data)
+                    failed_tickers.update(failed)
                     logger.debug(f"Successfully pulled data for batch {i + 1}")
-                    time.sleep(SLEEP)  # brief pause between batches
-                    failed_tickers.extend(failed)
+
+                except AllFailedButLoggedError as e:
+                    failed_tickers.update(e.failed)
+                    logger.error(
+                        f"All tickers in batch {i + 1} failed but were logged."
+                    )
                 except Exception as e:
                     logger.error(
                         f"Error occurred while pulling data for batch {i + 1}:"
                         f" {e}"
                     )
-                    failed_tickers.extend(batch)  # consider whole batch failed
+                    # consider whole batch failed
+                    failed_tickers.update({ticker: str(e) for ticker in batch})
+
             if not failed_tickers:
                 logger.info("All tickers pulled successfully.")
                 break
             else:
                 logger.warning(
-                    f"Failed to pull data for tickers: {failed_tickers}"
+                    f"Failed to pull data for tickers: {failed_tickers.keys()}"
                     f" - Retrying failed tickers in next attempt."
                 )
-                batches = self._split_batches(failed_tickers)
+                batches = self._split_batches(list(failed_tickers))
                 time.sleep(SLEEP * 2)  # longer pause before retrying failed
         # Return empty DataFrame if all attempts failed
         if not frames:
@@ -129,7 +138,7 @@ class YFinPuller:
         self,
         tickers: list,
         fields: list
-    ) -> tuple[pd.DataFrame, list[str]]:
+    ) -> tuple[pd.DataFrame, dict[str, str]]:
         """
         Pull fields for a list of tickers.
 
@@ -145,8 +154,9 @@ class YFinPuller:
         pd.DataFrame
             A DataFrame containing the pulled data (long format), with columns
             for 'identifier', 'field', 'date', 'source', 'value' and 'scale'.
-        list
-            List of tickers for which the pull failed (e.g. due to API issues).
+        dict[str, str]
+            Dictionary of tickers for which the pull failed (e.g. due to API
+            issues) and their error messages.
         """
 
         if 'totret' in fields:
@@ -168,7 +178,7 @@ class YFinPuller:
             raise ValueError("No data available for any requested tickers.")
 
         successes = []
-        failed = []
+        failed = dict()
         for ticker in tickers:
             # Extract data for the specific ticker (flattens)
             try:
@@ -178,11 +188,11 @@ class YFinPuller:
                 )
             except Exception as e:
                 logger.error(f"Error processing ticker '{ticker}': {e}")
-                failed.append(ticker)
+                failed[ticker] = str(e)
                 continue
 
         if not successes:
-            raise ValueError("All tickers failed to pull or process.")
+            raise AllFailedButLoggedError(failed)
         return pd.concat(successes, ignore_index=True), failed
 
     @staticmethod
@@ -280,6 +290,12 @@ class YFinPuller:
             end = min((i+1) * self.batch_size, len(tickers))
             batches.append(tickers[i * self.batch_size:end])
         return batches
+
+
+class AllFailedButLoggedError(Exception):
+    def __init__(self, failed: dict[str, str]):
+        super().__init__("All tickers failed in batch.")
+        self.failed = failed
 
 
 # ----------------------------------------------------------------------------
