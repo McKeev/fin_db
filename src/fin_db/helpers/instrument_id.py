@@ -32,7 +32,7 @@ _ISIN_RE = re.compile(r"^[A-Z]{2}[A-Z0-9]{9}[0-9]$")
 # ----------------------------------------------------------------------------
 
 
-def instrument_id(asset_class: str, code: str, hash_on: str) -> str:
+def create_instrument_id(asset_class: str, code: str, hash_on: str) -> str:
     """
     Constructs a deterministic instrument id.
     Length:          3            4     13   = 20 chars total

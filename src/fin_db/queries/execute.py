@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 # ----------------------------------------------------------------------------
 
 
+_IDENTIFIER_TYPES: set[str] | None = None  # Lazy load
 QUERIES = ROOT_DIR / 'queries'
 
 
@@ -112,6 +113,54 @@ def to_update(
         for k, v in result
     }
     return result_dict
+
+
+def get_iid_mapping(
+    tickers: str | list[str],
+    identifier_type: str
+) -> dict[str, str]:
+    """
+    Get internal `instrument_id`s for a list of external tickers.
+
+    Parameters
+    ----------
+    tickers : str | list[str]
+        A single ticker or a list of tickers to translate.
+    identifier_type : str
+        The type of identifier provided (e.g., 'yfin', 'ric').
+
+    Returns
+    -------
+    dict[str, str]
+        A dictionary mapping external tickers to internal `instrument_id`s.
+    """
+    global _IDENTIFIER_TYPES
+    # Get identier types if needed
+    if _IDENTIFIER_TYPES is None:
+        with db_conn().cursor() as cur:
+            cur.execute(
+                "SELECT column_name"
+                " FROM information_schema.columns"
+                " WHERE table_name = 'identifiers'"
+                "  AND table_schema = 'public';"
+            )
+            _IDENTIFIER_TYPES = {row[0] for row in cur.fetchall()}
+
+    # Checks and normalization
+    if identifier_type not in _IDENTIFIER_TYPES:
+        raise ValueError(
+            f"Unsupported identifier type: {identifier_type}. "
+            f"Supported types are: {_IDENTIFIER_TYPES}"
+        )
+    if isinstance(tickers, str):
+        tickers = [tickers]
+
+    result = query_read(
+        'instrument_id_mapping.sql',
+        params={'tickers': tickers},
+        identifiers={'identifier': identifier_type}
+    )
+    return {row[0]: row[1] for row in result}
 
 
 # ----------------------------------------------------------------------------

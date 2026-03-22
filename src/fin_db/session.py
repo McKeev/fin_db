@@ -40,7 +40,9 @@ _conn: psycopg.Connection | None = None
 def open_session(
     user: str,
     password: str | None = None,
-    host: str = 'localhost'
+    host: str = 'localhost',
+    port: int = 5433,
+    dbname: str = 'fin_db',
 ) -> None:
     """
     Open a new database session.
@@ -52,11 +54,11 @@ def open_session(
             'Please close it before opening a new one.'
         )
     _conn = psycopg.connect(
-        dbname='fin_db',
+        dbname=dbname,
         user=user,
         password=password,
         host=host,
-        port=5433,
+        port=port,
     )
     logger.info('Database session opened successfully.')
 
