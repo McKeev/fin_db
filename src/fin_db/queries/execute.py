@@ -13,7 +13,8 @@ This module executes queries found in this submodule.
 from typing import Any
 import logging
 # Third Party Imports
-from psycopg import sql  # pyright: ignore[reportMissingImports]
+from psycopg import sql
+import pandas as pd
 # Local Imports
 from fin_db.constants import ROOT_DIR, SOURCE_IDENTIFIERS
 from fin_db.session import db_conn
@@ -67,6 +68,54 @@ def query_read(
         cur.execute(query_obj, params)
         logger.debug(f"Executed query from {query_file} with params: {params}")
         return cur.fetchall()
+
+
+def query_write(
+    query_file: str,
+    params: dict[str, Any] | list[dict[str, Any]] | None = None,
+    identifiers: dict[str, str] | None = None,
+    commit: bool = True
+) -> None:
+    """
+    Execute a SQL write query from a file.
+
+    Parameters
+    ----------
+    query_file : str
+        The name of the SQL file containing the query to execute.
+    params : dict[str, Any] | tuple[Any, ...] | None, optional
+        Parameters to pass to the query, by default None.
+    identifiers : dict[str, str] | None, optional
+        Identifiers to pass to the query, by default None.
+    commit : bool, optional
+        Whether to commit the transaction, by default True.
+    """
+    with open(QUERIES / query_file, 'r') as f:
+        query_text = f.read()
+    query_obj = sql.SQL(query_text)
+    if identifiers:
+        # Add identifiers to the query using psycopg's SQL composition
+        query_obj = query_obj.format(
+            **{k: sql.Identifier(v) for k, v in identifiers.items()}
+        )
+    with db_conn().cursor() as cur:
+        if isinstance(params, list):
+            cur.executemany(query_obj, params)
+        else:
+            cur.execute(query_obj, params)
+        logger.info(
+            f"Executed write query from {query_file} "
+            f"({cur.rowcount} rows affected)."
+        )
+        if commit:
+            db_conn().commit()
+            logger.info("Transaction committed.")
+        else:
+            db_conn().rollback()
+            logger.info("Transaction rolled back.")
+
+
+# ------------------------------- READ QUERIES --------------------------------
 
 
 def to_update(
@@ -163,8 +212,108 @@ def get_iid_mapping(
     return {row[0]: row[1] for row in result}
 
 
-# ----------------------------------------------------------------------------
-# =============================== MAIN =======================================
-# ----------------------------------------------------------------------------
-if __name__ == '__main__':
-    pass
+def check_updates(
+    cutoff_date: str
+) -> list[dict[str, Any]]:
+    """
+    Check which instruments have not been updated after cutoff date.
+
+    Parameters
+    ----------
+    cutoff_date : str
+        The cutoff date in 'YYYY-MM-DD' format. Instruments with last updates
+        older (<=) than this date will be returned.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        A list of dictionaries containing `instrument_id`, `name`, `field`, and
+        `last_update` of concerned instruments.
+    """
+    result = query_read(
+        'check_updates.sql',
+        params={'cutoff_date': cutoff_date}
+    )
+    return [
+        {
+            'instrument_id': row[0],
+            'name': row[1],
+            'field': row[2],
+            'last_update': row[3]
+        }
+        for row in result
+    ]
+
+
+# ------------------------------ WRITE QUERIES --------------------------------
+
+
+def ingest_observations(
+    df: pd.DataFrame,
+    commit: bool = True
+) -> None:
+    """
+    Ingest a DataFrame of observations into the database.
+    CAUTION:
+    This function does not perform any validation or transformation on the
+    data, so it assumes that the DataFrame is already in the correct format for
+    ingestion.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame containing the observations to ingest.
+    commit : bool, optional
+        Whether to commit the transaction, by default True.
+
+    Returns
+    -------
+    None
+    """
+    # Write to DB
+    query_write(
+        'write_observations.sql',
+        params=df.to_dict(orient='records'),
+        commit=commit
+    )
+    # Log the successful updates into `updates`
+    query_write(
+        'write_updates.sql',
+        params=(
+            df[['instrument_id', 'field', 'source']]
+            .drop_duplicates()
+            .to_dict(orient='records')
+        ),
+        commit=commit
+    )
+
+
+def log_failed_ingest(
+    df: pd.DataFrame,
+    commit: bool = True
+) -> None:
+    """
+    Log failed ingestions into the database.
+    CAUTION:
+    This function does not perform any validation or transformation on the
+    data, so it assumes that the DataFrame is already in the correct format for
+    ingestion.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame containing the failed ingestions to log. Must contain
+        columns `instrument_id`, `field`, `source`, and `error_message`.
+    commit : bool, optional
+        Whether to commit the transaction, by default True.
+
+    Returns
+    -------
+    None
+    """
+    # Write to DB
+    query_write(
+        'write_fails.sql',
+        params=df.to_dict(orient='records'),
+        commit=commit
+    )

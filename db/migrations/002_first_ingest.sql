@@ -120,9 +120,9 @@ INSERT INTO updates
 SELECT DISTINCT
     instrument_id,
     field,
+    'YAHOO' AS source,
     'daily' AS frequency,
-    CURRENT_TIMESTAMP AS last_update,
-    'YAHOO' AS source
+    CURRENT_DATE AS last_update
 FROM observations;
 
 \echo '------------ Provide feedback on length of filled tables -------------'

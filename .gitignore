@@ -1,8 +1,9 @@
 # Poject Specific
 /data
 *.dbdiagram
-/db/sandbox/sandbox.sql
 /.pgdata
+sandbox.*
+/logs
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

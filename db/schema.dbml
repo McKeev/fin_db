@@ -19,14 +19,6 @@ Table identifiers {
   ric varchar [unique]
   yfin varchar [unique]
   etoro integer [unique]
-
-  Indexes {
-  ticker [name: "idx_identifiers_ticker"]
-  isin [name: "idx_identifiers_isin"]
-  ric [name: "idx_identifiers_ric"]
-  yfin [name: "idx_identifiers_yfin"]
-  etoro [name: "idx_identifiers_etoro"]
-  }
 }
 
 // We want to be able to store any additional attributes for an
@@ -37,36 +29,47 @@ Table instrument_attributes {
   value varchar [not null]
 }
 
+// This table is used to track data sources and their priority for updates and lookups
+Table sources {
+  name varchar [pk] // e.g. 'YAHOO', 'LSEG', etc..
+  priority integer [not null] // lower number = higher priority, used for source selection logic
+}
+
 // This is the main table for storing time series data for instruments
 // We want to be able to store any type of time series data (price, volume, etc.)
 Table observations {
   instrument_id char(20) [pk, ref: > instruments.instrument_id]
   field varchar [pk] // e.g. 'price', 'volume', etc.
   date date [pk]
-  source varchar [pk] // tracks data source, can be overwritten with better source
+  source varchar [pk, ref: > sources.name] // tracks data source, can be overwritten with better source
   value numeric(19,4) [not null]
   scale numeric(19,4) [not null] // e.g. 1.0 for price, 0.01 for percentage, etc.
 
   Indexes {
-    (instrument_id, field, date) [name: "idx_obs_lookup"]
+    (instrument_id, field, date) [name: "idx_obs_lookup"]  // for canonical view
   }
-}
-
-Table sources {
-  name varchar [pk] // e.g. 'YAHOO', 'LSEG', etc..
-  priority integer [not null] // lower number = higher priority, used for source selection logic
-  identifier varchar [not null] // e.g. 'yfin', 'lseg', etc., used for mapping to identifiers table
 }
 
 // This table is used for updating the time series data (observations)
 Table updates {
   instrument_id char(20) [pk, ref: > instruments.instrument_id]
   field varchar [pk] // e.g. 'price', 'volume', etc.
+  source varchar [pk, ref: > sources.name] // what source to use for updates
   frequency varchar [not null] // e.g. 'daily', 'weekly', etc.
-  last_update timestamp [not null] // when the last successful update occurred
-  source varchar [not null] // what source to use for updates
+  last_update date [not null] // when the last successful update occurred
 
   Indexes {
-    (source, frequency, instrument_id) [name: "idx_updates_source_frequency_instrument"]
+    (source, frequency, instrument_id, field) [name: "idx_updates_source_frequency_instrument"]
+    (source, frequency, last_update) [name: "idx_updates_due_scan"]
   }
+}
+
+// Failure log: one row per failed field per run day
+Table ingest_failures {
+  instrument_id char(20) [pk, ref: > instruments.instrument_id]
+  field varchar [pk] // failed field, e.g. close, totret
+  source varchar [pk, ref: > sources.name]
+  error_timestamp timestampz [pk]
+
+  error_message varchar
 }

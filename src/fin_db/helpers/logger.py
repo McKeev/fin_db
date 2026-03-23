@@ -1,6 +1,7 @@
 """Logger configuration for fin_db."""
 import logging
 import colorlog
+import datetime as dt
 from pathlib import Path
 from fin_db.helpers.telebot import get_telebot
 
@@ -102,3 +103,31 @@ def setup_logger(
     _logging_configured = True
 
     return logging.getLogger(name)
+
+
+def clear_old_logs(log_file: str, days: int = 30) -> None:
+    """
+    Clear log entries older than a specified number of days from the log file.
+
+    Parameters
+    ----------
+    log_file : str
+        Path to the log file to clean.
+    days : int, default=30
+        Number of days to retain logs. Logs older than this will be removed.
+    """
+    cutoff_date = dt.datetime.now() - dt.timedelta(days=days)
+    with open(log_file, 'r') as f:
+        lines = f.readlines()
+    with open(log_file, 'w') as f:
+        for line in lines:
+            try:
+                timestamp_str = line.split(' - ')[0]
+                timestamp = dt.datetime.strptime(
+                    timestamp_str, "%Y-%m-%d %H:%M:%S"
+                )
+                if timestamp >= cutoff_date:
+                    f.write(line)
+            except (IndexError, ValueError):
+                # If the line doesn't match the expected format, keep it
+                f.write(line)

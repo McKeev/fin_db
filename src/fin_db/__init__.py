@@ -1,4 +1,6 @@
 # Expose submodules
+from . import helpers
+from . import providers
 from . import queries
 from . import constants
 
@@ -17,6 +19,7 @@ __all__ = [
     'constants',
     'queries',
     'providers',
+    'helpers',
     # Classes
     'LSEGPuller',
     'YFinPuller',

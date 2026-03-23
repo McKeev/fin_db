@@ -1,6 +1,6 @@
 -- SQL dump generated using DBML (dbml.dbdiagram.io)
 -- Database: PostgreSQL
--- Generated at: 2026-03-16T23:51:46.683Z
+-- Generated at: 2026-03-22T21:41:27.806Z
 
 CREATE TABLE "instruments" (
   "instrument_id" char(20) PRIMARY KEY,
@@ -25,6 +25,11 @@ CREATE TABLE "instrument_attributes" (
   PRIMARY KEY ("instrument_id", "field")
 );
 
+CREATE TABLE "sources" (
+  "name" varchar PRIMARY KEY,
+  "priority" integer NOT NULL
+);
+
 CREATE TABLE "observations" (
   "instrument_id" char(20),
   "field" varchar,
@@ -35,34 +40,29 @@ CREATE TABLE "observations" (
   PRIMARY KEY ("instrument_id", "field", "date", "source")
 );
 
-CREATE TABLE "sources" (
-  "name" varchar PRIMARY KEY,
-  "priority" integer NOT NULL,
-  "identifier" varchar NOT NULL
-);
-
 CREATE TABLE "updates" (
   "instrument_id" char(20),
   "field" varchar,
+  "source" varchar,
   "frequency" varchar NOT NULL,
-  "last_update" timestamp NOT NULL,
-  "source" varchar NOT NULL,
-  PRIMARY KEY ("instrument_id", "field")
+  "last_update" date NOT NULL,
+  PRIMARY KEY ("instrument_id", "field", "source")
 );
 
-CREATE INDEX "idx_identifiers_ticker" ON "identifiers" ("ticker");
-
-CREATE INDEX "idx_identifiers_isin" ON "identifiers" ("isin");
-
-CREATE INDEX "idx_identifiers_ric" ON "identifiers" ("ric");
-
-CREATE INDEX "idx_identifiers_yfin" ON "identifiers" ("yfin");
-
-CREATE INDEX "idx_identifiers_etoro" ON "identifiers" ("etoro");
+CREATE TABLE "ingest_failures" (
+  "instrument_id" char(20),
+  "field" varchar,
+  "source" varchar,
+  "error_timestamp" timestampz,
+  "error_message" varchar,
+  PRIMARY KEY ("instrument_id", "field", "source", "error_timestamp")
+);
 
 CREATE INDEX "idx_obs_lookup" ON "observations" ("instrument_id", "field", "date");
 
-CREATE INDEX "idx_updates_source_frequency_instrument" ON "updates" ("source", "frequency", "instrument_id");
+CREATE INDEX "idx_updates_source_frequency_instrument" ON "updates" ("source", "frequency", "instrument_id", "field");
+
+CREATE INDEX "idx_updates_due_scan" ON "updates" ("source", "frequency", "last_update");
 
 ALTER TABLE "identifiers" ADD FOREIGN KEY ("instrument_id") REFERENCES "instruments" ("instrument_id") DEFERRABLE INITIALLY IMMEDIATE;
 
@@ -70,4 +70,12 @@ ALTER TABLE "instrument_attributes" ADD FOREIGN KEY ("instrument_id") REFERENCES
 
 ALTER TABLE "observations" ADD FOREIGN KEY ("instrument_id") REFERENCES "instruments" ("instrument_id") DEFERRABLE INITIALLY IMMEDIATE;
 
+ALTER TABLE "observations" ADD FOREIGN KEY ("source") REFERENCES "sources" ("name") DEFERRABLE INITIALLY IMMEDIATE;
+
 ALTER TABLE "updates" ADD FOREIGN KEY ("instrument_id") REFERENCES "instruments" ("instrument_id") DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE "updates" ADD FOREIGN KEY ("source") REFERENCES "sources" ("name") DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE "ingest_failures" ADD FOREIGN KEY ("instrument_id") REFERENCES "instruments" ("instrument_id") DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE "ingest_failures" ADD FOREIGN KEY ("source") REFERENCES "sources" ("name") DEFERRABLE INITIALLY IMMEDIATE;
