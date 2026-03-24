@@ -1,6 +1,8 @@
 services:
-  postgres:
-    image: postgres:18-alpine
+  postgres-pgbackrest:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
     container_name: fin-db-postgres
     restart: unless-stopped
     environment:
@@ -10,7 +12,9 @@ services:
     ports:
       - "${DB_PORT}:5432"
     volumes:
-      - ${MOUNT_PATH}
+      - ${MOUNT_PATH}:/var/lib/postgresql
+      - ${PGBACKREST_BACKUP_PATH}:/var/lib/pgbackrest
+      - ${PGBACKREST_CONF}:/etc/pgbackrest/pgbackrest.conf
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 10s

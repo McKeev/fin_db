@@ -1,0 +1,74 @@
+## Performing a Backup with pgBackRest
+
+To run a backup using pgBackRest inside your Docker container:
+
+1. **Start your container as usual**
+
+2. **Run the backup command:**
+	```sh
+	docker exec -it -u postgres fin-db-postgres pgbackrest --stanza=main backup
+	```
+	- This will perform a backup using the configuration and paths set up in your container and volumes.
+
+    Note for first time setup:
+    - You'll have to create the stanza:
+	```sh
+	docker exec -it -u postgres fin-db-postgres pgbackrest --stanza=main stanza-create
+	```
+
+3. **Check backup status:**
+	```sh
+	docker exec -it -u postgres fin-db-postgres pgbackrest --stanza=main info
+	```
+
+## Editing pgBackRest Configuration
+
+You can edit the pgBackRest configuration file at:
+
+	 db/docker/pgbackrest.conf
+
+This file is mounted into the container (see your `docker-compose.yaml`), so any changes you make will be picked up the next time you run a backup or restart the container.
+
+## Docker Volume Permissions: Avoiding Permission Errors
+
+When running Postgres and pgBackRest in Docker, you must ensure that all host-mounted directories (volumes) are owned by the same UID and GID as the user running the container process. Otherwise, you will encounter permission errors (e.g., "Permission denied" or "unable to open file").
+
+### 1. Determine the UID and GID used by Postgres in your container
+
+Run this command to check the UID/GID for the `postgres` user inside your running container:
+
+```sh
+docker exec -it fin-db-postgres bash -c "id postgres"
+```
+
+Example output:
+```
+uid=70(postgres) gid=70(postgres) groups=70(postgres)
+```
+
+This means you should use UID 70 and GID 70 for all host-mounted directories.
+
+### 2. Recursively chown all host-mounted directories to match
+
+Replace `/path/to/postgres/data`, `/path/to/pgbackrest`, and `/path/to/pgbackrest.conf` with the actual paths you use in your `docker-compose.yaml` volumes section.
+
+```sh
+sudo chown -R 70:70 /path/to/postgres/data
+sudo chown -R 70:70 /path/to/pgbackrest
+sudo chown 70:70 /path/to/pgbackrest.conf
+```
+
+Do this for every directory or file you mount into the container.
+
+### 3. Restart your container
+
+```sh
+docker compose down
+docker compose up -d
+```
+
+### Why is this necessary?
+
+Docker does not automatically fix permissions on host-mounted volumes. If the files/directories are not owned by the container's user, Postgres and pgBackRest will not be able to read/write as needed, causing errors.
+
+**Always match host-side ownership to the container's UID/GID for reliable operation.**
