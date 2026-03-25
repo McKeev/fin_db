@@ -7,10 +7,11 @@ set -euo pipefail
 #   ./db/migrations/run.sh all
 #
 # Optional:
-#   ENV_FILE=db/.env ./db/migrations/run.sh 001
+#   ENV_FILE=db/ops/.env ./db/migrations/run.sh 001
 
-# Repo root assumed as current working directory
-ENV_FILE="${ENV_FILE:-db/.env}"
+# Retrieve assumed ENV_FILE from db/ops/.env
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="${ENV_FILE:-$SCRIPT_DIR/../ops/.env}"
 
 if [ -f "$ENV_FILE" ]; then
   set -a

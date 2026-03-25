@@ -32,9 +32,9 @@ docker stop fin-db-postgres || true
 echo "Postgres container stopped."
 
 # Load environment variables
-if [ -f "$DB_DIR/.env" ]; then
+if [ -f "$DB_DIR/ops/.env" ]; then
     set -a
-    source "$DB_DIR/.env"
+    source "$DB_DIR/ops/.env"
     set +a
 else
     echo "ERROR: .env file not found in db directory."

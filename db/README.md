@@ -2,14 +2,6 @@
 
 ## Overview
 
-This folder contains the local PostgreSQL setup, schema definition, and SQL migrations for `fin_db`.
-
-- Docker runtime: `db/docker-compose.yaml`
-- Env template: `db/.env.example`
-- Schema source: `db/schema.dbml`
-- Migration scripts: `db/migrations/`
-- Migration runner: `db/migrations/run.sh`
-
 Migration order:
 
 1. `000_bootstrap.sql` (one-time, destructive bootstrap)
@@ -24,10 +16,10 @@ Migration order:
 ### 1) Create env file
 
 ```bash
-cp db/.env.example db/.env
+cp db/ops/.env.example db/ops/.env
 ```
 
-Edit `db/.env` and set at minimum:
+Edit `db/ops/.env` and set at minimum:
 
 - `MOUNT_PATH` (host path for persistent Postgres data)
 - `POSTGRES_PASSWORD`
@@ -36,7 +28,7 @@ Edit `db/.env` and set at minimum:
 ### 2) Start Postgres
 
 ```bash
-cd db && docker compose up -d
+cd db/ops && docker compose up -d
 ```
 
 ---
@@ -109,7 +101,7 @@ What it does:
 
 ```bash
 set -a
-. db/.env
+. db/ops/.env
 set +a
 
 psql "host=$DB_HOST port=$DB_PORT user=postgres dbname=postgres" \
@@ -146,7 +138,7 @@ bash db/migrations/run.sh all
 Use alternate env file:
 
 ```bash
-ENV_FILE=db/.env bash db/migrations/run.sh all
+ENV_FILE=db/ops/.env bash db/migrations/run.sh all
 ```
 
 ---

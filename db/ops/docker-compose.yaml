@@ -1,7 +1,7 @@
 services:
   postgres-pgbackrest:
     build:
-      context: ./docker
+      context: .
       dockerfile: Dockerfile
     container_name: fin-db-postgres
     restart: unless-stopped

@@ -4,22 +4,22 @@
 
 - `000_bootstrap.sql` is first-time admin setup.
 - `001_*.sql`, `002_*.sql`, ... are normal schema/data migrations.
-- `run.sh` is the normal migration runner (uses admin role and `db/.env.local`).
+- `run.sh` is the normal migration runner (uses admin role and `db/ops/.env`).
 
 ## Prerequisites
 
 - Postgres is running.
-- `db/.env` exists with the template from `db/.env`
+- `db/ops/.env` exists with the template from `db/ops/.env.example`
 
 - Password is stored in `~/.pgpass` (recommended).
 
 ## First-Time Setup
 
-Run bootstrap manually as admin (not via `run.sh`):
+Run bootstrap manually as admin from project root (not via `run.sh`):
 
 ```bash
 set -a
-. db/.env
+. db/ops/.env
 set +a
 
 psql "host=$DB_HOST port=$DB_PORT user=postgres dbname=postgres" \
@@ -58,7 +58,7 @@ bash db/migrations/run.sh all
 Use another env file:
 
 ```bash
-ENV_FILE=db/.env bash db/migrations/run.sh 001
+ENV_FILE=db/ops/.env bash db/migrations/run.sh 001
 ```
 
 ## Notes

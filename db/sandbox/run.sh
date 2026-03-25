@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Repo root assumed as current working directory
-ENV_FILE="${ENV_FILE:-db/.env}"
+# Retrieve assumed ENV_FILE from db/ops/.env
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="${ENV_FILE:-$SCRIPT_DIR/../ops/.env}"
+
+# Sandbox script
+SANDBOX="${SANDBOX:-$SCRIPT_DIR/sandbox.sql}"
 
 if [ -f "$ENV_FILE" ]; then
   set -a
@@ -21,4 +25,4 @@ DBUSER_MIGRATOR="${DBUSER_MIGRATOR:-fin_db_migrator}"
 
 psql "host=$DB_HOST port=$DB_PORT user=$DBUSER_ADMIN dbname=$DB_NAME" \
   -v ON_ERROR_STOP=1 \
-  -f db/sandbox/sandbox.sql
+  -f "$SANDBOX"
