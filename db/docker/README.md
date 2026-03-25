@@ -5,10 +5,6 @@ To run a backup using pgBackRest inside your Docker container:
 1. **Start your container as usual**
 
 2. **Run the backup command:**
-	```sh
-	docker exec -it -u postgres fin-db-postgres pgbackrest --stanza=main backup
-	```
-	- This will perform a backup using the configuration and paths set up in your container and volumes.
 
     Note for first time setup:
     - You'll have to create the stanza:
@@ -16,10 +12,35 @@ To run a backup using pgBackRest inside your Docker container:
 	docker exec -it -u postgres fin-db-postgres pgbackrest --stanza=main stanza-create
 	```
 
+	- This will perform a backup using the configuration and paths set up in your container and volumes:
+	```sh
+	docker exec -it -u postgres fin-db-postgres pgbackrest --stanza=main backup
+	```
+
 3. **Check backup status:**
 	```sh
 	docker exec -it -u postgres fin-db-postgres pgbackrest --stanza=main info
 	```
+
+## Restoring The Latest Backup
+
+To restore your database from the latest backup using pgBackRest and Docker,
+use the provided script for a safe, automated restore:
+
+```
+bash db/docker/restore.sh
+```
+
+- This script will:
+	- Warn and ask for confirmation.
+	- Stop your running Postgres container.
+	- Load environment variables from your .env file.
+	- Run the restore in a one-off container (using your backup and config volumes).
+	- Fix permissions on /tmp/pgbackrest to avoid future errors.
+	- Restart your main Postgres container.
+
+- You can also provide `-b path/to/intermediate` to save a backup of the current database for
+safety
 
 ## Editing pgBackRest Configuration
 
