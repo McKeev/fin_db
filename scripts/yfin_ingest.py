@@ -12,6 +12,7 @@ Script for daily ingesting for `observations` table.
 # First Party Imports
 import datetime as dt
 import os
+from pathlib import Path
 # Third Party Imports
 from dotenv import load_dotenv
 import pandas as pd
@@ -23,11 +24,11 @@ import fin_db as fdb
 # ============================= CONSTANTS ====================================
 # ----------------------------------------------------------------------------
 
-
-_LOG_FILE = 'logs/yahoo_daily_ingest.log'
+_FIN_DB_DIR = Path(__file__).parent.parent
+_LOG_FILE = _FIN_DB_DIR / 'logs' / 'yahoo_daily_ingest.log'
 _BATCH_SIZE = 5
 _MAX_ATTEMPTS = 5
-load_dotenv("scripts/.env")
+load_dotenv(_FIN_DB_DIR / "scripts/.env")
 fdb.setup_telebot(
     token=os.getenv('TELEGRAM_BOT_TOKEN'),
     chat_id=os.getenv('TELEGRAM_CHAT_ID'),
@@ -158,6 +159,9 @@ def main():
 # =============================== MAIN =======================================
 # ----------------------------------------------------------------------------
 if __name__ == '__main__':
+    fdb.get_telebot().send_msg(
+            "Started! (remove me)"
+    )
     try:
         fdb.open_session(
             user='fin_db_app',
