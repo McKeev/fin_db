@@ -47,10 +47,17 @@ class EtoroAPI:
         self,
         lookup,
         field: str = 'instrumentId',
+        return_fields: list[str] | None = None,
+        strict: bool = True
     ) -> dict:
         """
         Searches for an instrument based on the provided lookup value and
-        field.
+        field. Key fields include:
+        - 'instrumentId': The internal etoro instrument ID
+        - 'internalSymbolFull': Full internal symbol
+        - 'internalInstrumentDisplayName': The display name of the instrument
+        - 'isin': The ISIN code of the instrument
+
         More info on the API endpoint here:
         https://api-portal.etoro.com/api-reference/
         market-data/search-for-instruments
@@ -61,6 +68,13 @@ class EtoroAPI:
             The value to search for.
         field : str, optional
             The field to search in, by default 'instrumentId'.
+        return_fields : list of str, optional
+            A list of fields to return in the result. If None, returns all
+            fields.`
+        strict : bool, default=True
+            If True, requires an exact match for the lookup value. If False,
+            returns the first item that matches the lookup value in the
+            specified field.
 
         Returns:
         --------
@@ -85,13 +99,23 @@ class EtoroAPI:
         response = requests.get(url, headers=self._headers(), params=params)
 
         if response.status_code == 200:
+            # TODO Exclude 24_7 instruments
             data = response.json()
-            # Find the exact match in the returned items list
-            instrument = next(
-                (item for item in data['items'] if item[field] == lookup), None
-            )
+            if strict:
+                # Find the exact match in the returned items list
+                instrument = next(
+                    (item for item in data['items']
+                     if item[field] == lookup), None
+                )
+            else:
+                # Return the first item from the search results
+                instrument = next(
+                    (item for item in data['items']), None
+                )
 
-            if instrument:
+            if instrument and return_fields:
+                return {key: instrument[key] for key in return_fields}
+            elif instrument:
                 return instrument
             else:
                 raise Exception(

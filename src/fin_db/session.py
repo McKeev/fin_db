@@ -40,7 +40,7 @@ _conn: psycopg.Connection | None = None
 def open_session(
     user: str,
     password: str | None = None,
-    host: str = 'localhost',
+    host: str = 'minicomp',
     port: int = 5433,
     dbname: str = 'fin_db',
 ) -> None:

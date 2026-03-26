@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 # ----------------------------------------------------------------------------
 
 
-_SOURCES: set[str] | None = None  # Lazy load
 QUERIES = ROOT_DIR / 'queries'
 
 
@@ -179,7 +178,9 @@ def get_iid_mapping(
     Returns
     -------
     dict[str, str]
-        A dictionary mapping external tickers to internal `instrument_id`s.
+        A dictionary mapping external tickers to internal `instrument_id`s if
+        found in the database. If a ticker is not found, it will show None.
+        Example: {'AAPL': '12345', 'GOOG': '67890', 'MADEUP': None}
     """
     # Checks and normalization
     if source not in valid_sources():
@@ -187,8 +188,10 @@ def get_iid_mapping(
             f"Unsupported source: {source}. "
             f"Supported sources are: {list(valid_sources())}"
         )
-    if isinstance(tickers, str):
-        tickers = [tickers]
+    # Precaution bc etoro API can return int for id
+    if type(tickers) is not list:
+        tickers = [str(tickers)]
+    tickers = [str(ticker) for ticker in tickers]
 
     result = query_read(
         'instrument_id_mapping.sql',
