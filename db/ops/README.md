@@ -1,6 +1,6 @@
 ## Performing a Backup with pgBackRest
 
-To run a backup using pgBackRest inside your Docker container:
+To run a backup using pgBackRest inside your Docker container (note: dependency on gdrive for full backups):
 
 1. **Start your container as usual**
 
@@ -12,9 +12,9 @@ To run a backup using pgBackRest inside your Docker container:
 	docker exec -it -u postgres fin-db-postgres pgbackrest --stanza=main stanza-create
 	```
 
-	- This will perform a backup using the configuration and paths set up in your container and volumes:
+	- This will perform a backup (of type `full` or `incr`) using the configuration and paths set up in your container and volumes:
 	```sh
-	docker exec -it -u postgres fin-db-postgres pgbackrest --stanza=main backup
+	bash db/ops/backup.sh -t backup_type
 	```
 
 3. **Check backup status:**
@@ -71,13 +71,20 @@ This means you should use UID 70 and GID 70 for all host-mounted directories.
 
 ### 2. Recursively chown all host-mounted directories to match
 
-Replace `/path/to/postgres/data`, `/path/to/pgbackrest`, and `/path/to/pgbackrest.conf` with the actual paths you use in your `docker-compose.yaml` volumes section.
+Replace `/path/to/postgres/data`, `/path/to/pgbackrest` (backup location), and `/path/to/pgbackrest.conf` with the actual paths you use in your `docker-compose.yaml` volumes section.
 
 ```sh
 sudo chown -R 70:70 /path/to/postgres/data
 sudo chown -R 70:70 /path/to/pgbackrest
+sudo chmod -R a+rx/mnt/wd_elements/findb_pgbackrest
 sudo chown 70:70 /path/to/pgbackrest.conf
 ```
+
+In order, this:
+- Changes ownership of `/path/to/postgres/data` to 70:70 (postgres)
+- Changes ownership of `/path/to/pgbackrest` to 70:70 (postgres)
+- Allows all users to read and list access to `/path/to/pgbackrest` (needed for gdrive backup)
+- Changes ownership of `/path/to/pgbackrest.conf` to 70:70 (postgres)
 
 Do this for every directory or file you mount into the container.
 
