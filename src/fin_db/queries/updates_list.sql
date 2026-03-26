@@ -24,14 +24,15 @@
 
 WITH instrument_fields AS (
     SELECT
-        {identifier_col} AS ticker,
-        ARRAY_AGG(field ORDER BY field) AS field_set
-    FROM updates
-    JOIN identifiers
+        id.ext_id AS ticker,
+        ARRAY_AGG(u.field ORDER BY u.field) AS field_set
+    FROM updates AS u
+    JOIN identifiers AS id
       USING (instrument_id)
-    WHERE source = %(source)s
-      AND frequency = %(frequency)s
-    GROUP BY {identifier_col}
+    WHERE id.source = %(source)s
+      AND u.source = %(source)s
+      AND u.frequency = %(frequency)s
+    GROUP BY id.ext_id
 )
 SELECT
     field_set,

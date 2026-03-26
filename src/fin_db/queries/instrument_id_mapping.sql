@@ -1,7 +1,9 @@
 -- Serves to translate external tickers to internal `instrument_id`s
 
 SELECT
-    {identifier},
+    ext_id,
     instrument_id
 FROM identifiers
-WHERE {identifier} =  ANY(%(tickers)s)
+WHERE 
+    source = %(source)s
+    AND ext_id =  ANY(%(tickers)s);

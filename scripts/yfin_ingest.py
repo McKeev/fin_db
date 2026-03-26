@@ -73,7 +73,7 @@ def etl(
     needed_iids = list(set(df['identifier'].unique()) | set(failed))
     iid_mapping = fdb.queries.get_iid_mapping(
         tickers=needed_iids,
-        identifier_type='yfin'
+        source='YAHOO'
     )
     df['identifier'] = df['identifier'].map(iid_mapping)
     df = df.rename(columns={'identifier': 'instrument_id'})

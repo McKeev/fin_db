@@ -41,6 +41,63 @@ Use `~/.pgpass` for local password management so `psql` and scripts can run with
 
 ## Migrations
 
+
+### `004_reorg_tickers.sql`
+
+Purpose: reorganizes identifier storage and adds internal ticker to instruments.
+
+What it does:
+
+- Adds `internal_ticker` column to `instruments` and populates it from `identifiers.ticker`
+- Sets `internal_ticker` as NOT NULL and UNIQUE
+- Reformats `identifiers` table to long form with columns: `instrument_id`, `source`, `ext_id`
+- Adds ISIN as a source and migrates ISIN, RIC, YFIN, ETORO to the modified `identifiers` table
+- Adds index on `(source, ext_id)` for fast lookup
+- Cleans up any legacy `identifier` column in `sources`
+
+---
+
+### `003_canonical_view.sql`
+
+Purpose: creates canonical read view across multiple data sources.
+
+What it does:
+
+- Creates/replaces `canonical_obs`
+- Selects one row per `(instrument_id, field, date)`
+- Chooses source by `sources.priority` (`lower number = higher priority`)
+
+---
+
+### `002_first_ingest.sql`
+
+Purpose: initial load of seed and bootstrap data from CSV files.
+
+What it does:
+
+- Creates temp staging tables for equities and observations
+- Loads CSV inputs from `db/initial_setup/equities_final.csv` and `data/bootstrap_data.csv`
+- Seeds `sources`
+- Inserts `instruments`, `identifiers`, and `instrument_attributes`
+- Inserts `observations` by mapping source identifiers to `instrument_id`
+- Seeds `updates` for daily ingestion workflow
+- Outputs row counts for validation
+
+---
+
+### `001_initial_schema.sql`
+
+Purpose: creates the core relational schema.
+
+What it does:
+
+- Creates core tables: `instruments`, `identifiers`, `instrument_attributes`, `observations`, `sources`, `updates`,
+  `ingest_failures`
+- Adds primary keys and foreign keys
+- Adds lookup/performance indexes (identifiers, observations, updates)
+
+---
+
 ### `000_bootstrap.sql`
 
 Purpose: first-time database bootstrap and role setup.
@@ -57,41 +114,6 @@ Notes:
 - Destructive by design
 - Must be run manually as superuser (`postgres`)
 - Intentionally blocked by `db/migrations/run.sh`
-
-### `001_initial_schema.sql`
-
-Purpose: creates the core relational schema.
-
-What it does:
-
-- Creates core tables: `instruments`, `identifiers`, `instrument_attributes`, `observations`, `sources`, `updates`,
-`ingest_failures`, 
-- Adds primary keys and foreign keys
-- Adds lookup/performance indexes (identifiers, observations, updates)
-
-### `002_first_ingest.sql`
-
-Purpose: initial load of seed and bootstrap data from CSV files.
-
-What it does:
-
-- Creates temp staging tables for equities and observations
-- Loads CSV inputs from `db/initial_setup/equities_final.csv` and `data/bootstrap_data.csv`
-- Seeds `sources`
-- Inserts `instruments`, `identifiers`, and `instrument_attributes`
-- Inserts `observations` by mapping source identifiers to `instrument_id`
-- Seeds `updates` for daily ingestion workflow
-- Outputs row counts for validation
-
-### `003_canonical_view.sql`
-
-Purpose: creates canonical read view across multiple data sources.
-
-What it does:
-
-- Creates/replaces `canonical_obs`
-- Selects one row per `(instrument_id, field, date)`
-- Chooses source by `sources.priority` (`lower number = higher priority`)
 
 ---
 

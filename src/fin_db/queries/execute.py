@@ -16,8 +16,9 @@ import logging
 from psycopg import sql
 import pandas as pd
 # Local Imports
-from fin_db.constants import ROOT_DIR, SOURCE_IDENTIFIERS
+from fin_db.constants import ROOT_DIR
 from fin_db.session import db_conn
+from fin_db.helpers import valid_sources
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 # ----------------------------------------------------------------------------
 
 
-_IDENTIFIER_TYPES: set[str] | None = None  # Lazy load
+_SOURCES: set[str] | None = None  # Lazy load
 QUERIES = ROOT_DIR / 'queries'
 
 
@@ -141,10 +142,10 @@ def to_update(
         corresponding tickers as values.
     """
 
-    if source not in SOURCE_IDENTIFIERS:
+    if source not in valid_sources():
         raise ValueError(
             f"Unsupported source: {source}. "
-            f"Supported sources are: {list(SOURCE_IDENTIFIERS.keys())}"
+            f"Supported sources are: {list(valid_sources())}"
         )
     result = query_read(
         'updates_list.sql',
@@ -152,9 +153,6 @@ def to_update(
             'frequency': frequency,
             'source': source,
         },
-        identifiers={
-            'identifier_col': SOURCE_IDENTIFIERS[source]
-        }
     )
     result_dict = {
         # Convert lists of fields to tuples
@@ -166,7 +164,7 @@ def to_update(
 
 def get_iid_mapping(
     tickers: str | list[str],
-    identifier_type: str
+    source: str
 ) -> dict[str, str]:
     """
     Get internal `instrument_id`s for a list of external tickers.
@@ -175,39 +173,29 @@ def get_iid_mapping(
     ----------
     tickers : str | list[str]
         A single ticker or a list of tickers to translate.
-    identifier_type : str
-        The type of identifier provided (e.g., 'yfin', 'ric').
+    source : str
+        The source of the identifiers (e.g., 'YAHOO', 'ISIN').
 
     Returns
     -------
     dict[str, str]
         A dictionary mapping external tickers to internal `instrument_id`s.
     """
-    global _IDENTIFIER_TYPES
-    # Get identier types if needed
-    if _IDENTIFIER_TYPES is None:
-        with db_conn().cursor() as cur:
-            cur.execute(
-                "SELECT column_name"
-                " FROM information_schema.columns"
-                " WHERE table_name = 'identifiers'"
-                "  AND table_schema = 'public';"
-            )
-            _IDENTIFIER_TYPES = {row[0] for row in cur.fetchall()}
-
     # Checks and normalization
-    if identifier_type not in _IDENTIFIER_TYPES:
+    if source not in valid_sources():
         raise ValueError(
-            f"Unsupported identifier type: {identifier_type}. "
-            f"Supported types are: {_IDENTIFIER_TYPES}"
+            f"Unsupported source: {source}. "
+            f"Supported sources are: {list(valid_sources())}"
         )
     if isinstance(tickers, str):
         tickers = [tickers]
 
     result = query_read(
         'instrument_id_mapping.sql',
-        params={'tickers': tickers},
-        identifiers={'identifier': identifier_type}
+        params={
+            'tickers': tickers,
+            'source': source
+        }
     )
     return {row[0]: row[1] for row in result}
 
