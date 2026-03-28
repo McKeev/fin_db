@@ -61,8 +61,8 @@ else
     | tee -a "$BACKUP_LOG"
     printf "\n=========================================================================\n" \
     | tee -a "$BACKUP_LOG"
-    exit 1
     # Sync the repository to GDrive (before pgBackRest backup to get longer history of backups in GDrive)
+    sudo chmod -R a+rx $PGBACKREST_BACKUP_PATH
     echo "$(date): Backing up to GDrive ($REMOTE)..." | tee -a "$BACKUP_LOG"
     if /usr/bin/rclone sync $PGBACKREST_BACKUP_PATH $REMOTE \
         --fast-list \
