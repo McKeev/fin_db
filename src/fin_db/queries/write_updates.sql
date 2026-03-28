@@ -1,7 +1,17 @@
--- Log latest upates to `updates` table
+-- Ingest data to updates table for the first time
 
-UPDATE updates
-SET last_update = CURRENT_DATE
-WHERE instrument_id = %(instrument_id)s
-  AND field = %(field)s
-  AND source = %(source)s;
+INSERT INTO updates (
+    instrument_id,
+    field,
+    source,
+    frequency,
+    last_update
+)
+VALUES (
+    %(instrument_id)s,
+    %(field)s,
+    %(source)s,
+    %(frequency)s,
+    CURRENT_DATE
+)
+ON CONFLICT (instrument_id, field, source) DO NOTHING;

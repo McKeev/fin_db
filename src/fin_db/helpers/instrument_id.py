@@ -18,7 +18,7 @@ import re
 
 ASSET_CLASSES = {
     "equity": "EQU",
-    "etf": "ETF",
+    "equity_etf": "ETF",
     "index": "IND",
     "crypto": "CRY",
     "currency": "CUR",
@@ -52,12 +52,19 @@ def create_instrument_id(asset_class: str, code: str, hash_on: str) -> str:
     code = code.upper().ljust(4, "X")
     # Validate hash_on based on asset class
     match normalized_asset_class:
-        case "equity":
+        case "equity" | "equity_etf":  # Use ISIN
             if _valid_isin(hash_on):
                 hash_val = hash_on.upper().ljust(13, "X")
             else:
                 raise ValueError(
                     f"Invalid ISIN for {normalized_asset_class}: {hash_on}"
+                )
+        case "currency":  # Use ISO 4217 code of the quote currency
+            if len(hash_on) == 3 and hash_on.isalpha():
+                hash_val = hash_on.upper().ljust(13, "X")
+            else:
+                raise ValueError(
+                    f"Invalid quote currency code for currency pair: {hash_on}"
                 )
         case _:
             raise NotImplementedError(

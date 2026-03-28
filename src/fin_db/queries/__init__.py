@@ -6,6 +6,10 @@ from .execute import (
     # Write queries
     ingest_observations,
     log_failed_ingest,
+    ingest_instruments,
+    ingest_attributes,
+    ingest_updates,
+    ingest_identifiers,
 )
 
 __all__ = [
@@ -16,4 +20,8 @@ __all__ = [
     # Write queries
     'ingest_observations',
     'log_failed_ingest',
+    'ingest_instruments',
+    'ingest_attributes',
+    'ingest_updates',
+    'ingest_identifiers',
 ]

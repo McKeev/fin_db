@@ -1,75 +1,92 @@
-// Use DBML to define your database structure
-// Docs: https://dbml.dbdiagram.io/docs
-
-// These are required fields for all instruments
-Table instruments {
-  instrument_id char(20) [pk]
-  name varchar [not null, unique]
-  asset_class varchar [not null] // e.g. 'equity', 'bond', 'commodity', etc.
-  unit varchar [not null] // could USD, EUR, points, etc.
+Table "instruments" {
+  "instrument_id" bpchar(20) [pk, not null]
+  "name" varchar [unique, not null]
+  "asset_class" varchar [not null]
+  "unit" varchar [not null]
+  "internal_ticker" varchar [unique, not null]
 }
 
-// Need to store for a fast lookup of identifiers for an instrument
-// However, we're expecting a lot of missing identifiers
-// The general use will be to translate tickers to instrument_id and vice versa
-Table identifiers {
-  instrument_id char(20) [pk, ref: - instruments.instrument_id]
-  ticker varchar [unique]  // Primary display ticker (platform-agnostic)
-  isin varchar [unique]
-  ric varchar [unique]
-  yfin varchar [unique]
-  etoro integer [unique]
-}
-
-// We want to be able to store any additional attributes for an
-// instrument in a flexible way
-Table instrument_attributes {
-  instrument_id char(20) [pk, ref: > instruments.instrument_id]
-  field varchar [pk]
-  value varchar [not null]
-}
-
-// This table is used to track data sources and their priority for updates and lookups
-Table sources {
-  name varchar [pk] // e.g. 'YAHOO', 'LSEG', etc..
-  priority integer [not null] // lower number = higher priority, used for source selection logic
-}
-
-// This is the main table for storing time series data for instruments
-// We want to be able to store any type of time series data (price, volume, etc.)
-Table observations {
-  instrument_id char(20) [pk, ref: > instruments.instrument_id]
-  field varchar [pk] // e.g. 'price', 'volume', etc.
-  date date [pk]
-  source varchar [pk, ref: > sources.name] // tracks data source, can be overwritten with better source
-  value numeric(19,4) [not null]
-  scale numeric(19,4) [not null] // e.g. 1.0 for price, 0.01 for percentage, etc.
+Table "instrument_attributes" {
+  "instrument_id" bpchar(20) [not null]
+  "field" varchar [not null]
+  "value" varchar [not null]
 
   Indexes {
-    (instrument_id, field, date) [name: "idx_obs_lookup"]  // for canonical view
+    (instrument_id, field) [pk, type: btree, name: "instrument_attributes_pkey"]
   }
 }
 
-// This table is used for updating the time series data (observations)
-Table updates {
-  instrument_id char(20) [pk, ref: > instruments.instrument_id]
-  field varchar [pk] // e.g. 'price', 'volume', etc.
-  source varchar [pk, ref: > sources.name] // what source to use for updates
-  frequency varchar [not null] // e.g. 'daily', 'weekly', etc.
-  last_update date [not null] // when the last successful update occurred
+Table "sources" {
+  "name" varchar [pk, not null]
+  "priority" int4 [not null]
+}
+
+Table "observations" {
+  "instrument_id" bpchar(20) [not null]
+  "field" varchar [not null]
+  "date" date [not null]
+  "source" varchar [not null]
+  "value" numeric(19,5) [not null]
+  "scale" numeric(19,5) [not null]
 
   Indexes {
-    (source, frequency, instrument_id, field) [name: "idx_updates_source_frequency_instrument"]
-    (source, frequency, last_update) [name: "idx_updates_due_scan"]
+    (instrument_id, field, date, source) [pk, type: btree, name: "observations_pkey"]
+    (instrument_id, field, date) [type: btree, name: "idx_obs_lookup"]
   }
 }
 
-// Failure log: one row per failed field per run day
-Table ingest_failures {
-  instrument_id char(20) [pk, ref: > instruments.instrument_id]
-  field varchar [pk] // failed field, e.g. close, totret
-  source varchar [pk, ref: > sources.name]
-  error_timestamp timestampz [pk]
+Table "updates" {
+  "instrument_id" bpchar(20) [not null]
+  "field" varchar [not null]
+  "source" varchar [not null]
+  "frequency" varchar [not null]
+  "last_update" date [not null]
 
-  error_message varchar
+  Indexes {
+    (instrument_id, field, source) [pk, type: btree, name: "updates_pkey"]
+    (source, frequency, last_update) [type: btree, name: "idx_updates_due_scan"]
+    (source, frequency, instrument_id, field) [type: btree, name: "idx_updates_source_frequency_instrument"]
+  }
 }
+
+Table "ingest_failures" {
+  "instrument_id" bpchar(20) [not null]
+  "field" varchar [not null]
+  "source" varchar [not null]
+  "error_timestamp" timestamptz [not null]
+  "error_message" varchar
+
+  Indexes {
+    (instrument_id, field, source, error_timestamp) [pk, type: btree, name: "ingest_failures_pkey"]
+  }
+}
+
+Table "identifiers" {
+  "instrument_id" bpchar(20) [not null]
+  "source" varchar [not null]
+  "ext_id" varchar [not null]
+
+  Indexes {
+    (instrument_id, source) [pk, type: btree, name: "identifiers_new_pkey"]
+    (instrument_id, source, ext_id) [type: btree, unique, name: "identifiers_new_instrument_id_source_ext_id_key"]
+    (source, ext_id) [type: btree, name: "idx_identifiers_source_extid"]
+  }
+}
+
+Ref "identifiers_new_instrument_id_fkey":"instruments"."instrument_id" < "identifiers"."instrument_id"
+
+Ref "identifiers_new_source_fkey":"sources"."name" < "identifiers"."source"
+
+Ref "ingest_failures_instrument_id_fkey":"instruments"."instrument_id" < "ingest_failures"."instrument_id"
+
+Ref "ingest_failures_source_fkey":"sources"."name" < "ingest_failures"."source"
+
+Ref "instrument_attributes_instrument_id_fkey":"instruments"."instrument_id" < "instrument_attributes"."instrument_id"
+
+Ref "observations_instrument_id_fkey":"instruments"."instrument_id" < "observations"."instrument_id"
+
+Ref "observations_source_fkey":"sources"."name" < "observations"."source"
+
+Ref "updates_instrument_id_fkey":"instruments"."instrument_id" < "updates"."instrument_id"
+
+Ref "updates_source_fkey":"sources"."name" < "updates"."source"

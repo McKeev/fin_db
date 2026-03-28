@@ -35,8 +35,8 @@ CREATE TABLE "observations" (
   "field" varchar,
   "date" date,
   "source" varchar,
-  "value" numeric(19,4) NOT NULL,
-  "scale" numeric(19,4) NOT NULL,
+  "value" numeric(19,5) NOT NULL,
+  "scale" numeric(19,5) NOT NULL,
   PRIMARY KEY ("instrument_id", "field", "date", "source")
 );
 

@@ -269,7 +269,7 @@ def ingest_observations(
     )
     # Log the successful updates into `updates`
     query_write(
-        'write_updates.sql',
+        'log_updates.sql',
         params=(
             df[['instrument_id', 'field', 'source']]
             .drop_duplicates()
@@ -305,6 +305,128 @@ def log_failed_ingest(
     # Write to DB
     query_write(
         'write_fails.sql',
+        params=df.to_dict(orient='records'),
+        commit=commit
+    )
+
+
+def ingest_instruments(
+    df: pd.DataFrame,
+    commit: bool = True
+) -> None:
+    """
+    Ingest a DataFrame of instruments into the database.
+    CAUTION:
+    This function does not perform any validation or transformation on the
+    data, so it assumes that the DataFrame is already in the correct format for
+    ingestion.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame containing the instruments to ingest. Must contain
+        columns `instrument_id`, `name`, `asset_class`, `unit`, and
+        `internal_ticker`.
+    commit : bool, optional
+        Whether to commit the transaction, by default True.
+
+    Returns
+    -------
+    None
+    """
+    query_write(
+        'write_instruments.sql',
+        params=df.to_dict(orient='records'),
+        commit=commit
+    )
+
+
+def ingest_attributes(
+    df: pd.DataFrame,
+    commit: bool = True
+) -> None:
+    """
+    Ingest a DataFrame of attributes into the database.
+    CAUTION:
+    This function does not perform any validation or transformation on the
+    data, so it assumes that the DataFrame is already in the correct format for
+    ingestion.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame containing the attributes to ingest. Must contain columns
+        `instrument_id`, `field`, and `value`.
+    commit : bool, optional
+        Whether to commit the transaction, by default True.
+
+    Returns
+    -------
+    None
+    """
+    query_write(
+        'write_attributes.sql',
+        params=df.to_dict(orient='records'),
+        commit=commit
+    )
+
+
+def ingest_updates(
+    df: pd.DataFrame,
+    commit: bool = True
+) -> None:
+    """
+    Ingest a DataFrame of updates into the database.
+    CAUTION:
+    This function does not perform any validation or transformation on the
+    data, so it assumes that the DataFrame is already in the correct format for
+    ingestion.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame containing the updates to ingest. Must contain columns
+        `instrument_id`, `field`, `source`, and `frequency` (date auto-set).
+    commit : bool, optional
+        Whether to commit the transaction, by default True.
+
+    Returns
+    -------
+    None
+    """
+    # Write to DB
+    query_write(
+        'write_updates.sql',
+        params=df.to_dict(orient='records'),
+        commit=commit
+    )
+
+
+def ingest_identifiers(
+    df: pd.DataFrame,
+    commit: bool = True
+) -> None:
+    """
+    Ingest a DataFrame of identifiers into the database.
+    CAUTION:
+    This function does not perform any validation or transformation on the
+    data, so it assumes that the DataFrame is already in the correct format for
+    ingestion.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame containing the identifiers to ingest. Must contain
+        columns `instrument_id`, `source`, and `external_id`.
+    commit : bool, optional
+        Whether to commit the transaction, by default True.
+
+    Returns
+    -------
+    None
+    """
+    query_write(
+        'write_identifiers.sql',
         params=df.to_dict(orient='records'),
         commit=commit
     )
