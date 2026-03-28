@@ -28,19 +28,13 @@ To restore your database from the latest backup using pgBackRest and Docker,
 use the provided script for a safe, automated restore:
 
 ```
-bash db/docker/restore.sh
+db/docker/restore.sh <YYYY-MM-DD> [HH:MM:SS] [-b backup_location] [-r]
+
+- YYYY-MM-DD: Required. The date to restore to.
+- HH:MM:SS: Optional. The time to restore to. If not provided, defaults to 00:00:00 (the start of the day).
+-b backup_location: Optional. If provided, a manual backup of the current data directory will be saved to this location before the restore.
+-r: Optional. If provided, the Postgres container will be left in recovery mode after the restore.
 ```
-
-- This script will:
-	- Warn and ask for confirmation.
-	- Stop your running Postgres container.
-	- Load environment variables from your .env file.
-	- Run the restore in a one-off container (using your backup and config volumes).
-	- Fix permissions on /tmp/pgbackrest to avoid future errors.
-	- Restart your main Postgres container.
-
-- You can also provide `-b path/to/intermediate` to save a backup of the current database for
-safety
 
 ## Editing pgBackRest Configuration
 
@@ -75,8 +69,9 @@ Replace `/path/to/postgres/data`, `/path/to/pgbackrest` (backup location), and `
 
 ```sh
 sudo chown -R 70:70 /path/to/postgres/data
+sudo chmod -R a+rx /path/to/postgres/data
 sudo chown -R 70:70 /path/to/pgbackrest
-sudo chmod -R a+rx/mnt/wd_elements/findb_pgbackrest
+sudo chmod -R a+rx /path/to/pgbackrest
 sudo chown 70:70 /path/to/pgbackrest.conf
 ```
 
