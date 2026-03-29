@@ -3,6 +3,7 @@ from .execute import (
     to_update,
     get_iid_mapping,
     check_updates,
+    hist,
     # Write queries
     ingest_observations,
     log_failed_ingest,
@@ -17,6 +18,7 @@ __all__ = [
     'to_update',
     'get_iid_mapping',
     'check_updates',
+    'hist',
     # Write queries
     'ingest_observations',
     'log_failed_ingest',

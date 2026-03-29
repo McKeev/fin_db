@@ -201,7 +201,7 @@ SELECT
     COALESCE(change, 1) AS change
 FROM spine_with_groups
 ;
-CREATE UNIQUE INDEX idx_units_ts_code_date ON units_ts (code, date);
+CREATE INDEX idx_units_ts_date_code ON units_ts (date, code);
 GRANT MAINTAIN ON units_ts TO fin_db_app;
 
 \echo '----------------------- Create time_series_usd -----------------------'

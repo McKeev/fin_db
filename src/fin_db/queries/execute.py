@@ -18,7 +18,7 @@ import pandas as pd
 # Local Imports
 from fin_db.constants import ROOT_DIR
 from fin_db.session import db_conn
-from fin_db.helpers import valid_sources
+from fin_db.helpers import valid_sources, to_datetime, DateLike
 
 logger = logging.getLogger(__name__)
 
@@ -236,6 +236,64 @@ def check_updates(
         }
         for row in result
     ]
+
+
+def hist(
+    tickers: str | list[str],
+    fields: str | list[str],
+    sdate: DateLike,
+    edate: DateLike,
+) -> pd.DataFrame:
+    """
+    Get historical data for a list of tickers and fields between two dates.
+
+    Parameters
+    ----------
+    tickers : str | list[str]
+        A single ticker or a list of tickers to retrieve data for.
+    fields : str | list[str]
+        A single field or a list of fields to retrieve ('price', 'totret', ..).
+    sdate : DateLike
+        The start date for which to retrieve data.
+    edate : DateLike
+        The end date for which to retrieve data.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing the historical data for the specified tickers
+        and fields, indexed by date with multi-level columns for ticker and
+        field.
+    """
+    # Normalize inputs
+    if type(tickers) is not list:
+        tickers = [str(tickers)]
+    if type(fields) is not list:
+        fields = [str(fields)]
+    sdate = to_datetime(sdate)
+    edate = to_datetime(edate)
+
+    result = query_read(
+        'usd_ts.sql',
+        params={
+            'tickers': tickers,
+            'fields': fields,
+            'sdate': sdate.date().isoformat(),
+            'edate': edate.date().isoformat()
+        }
+    )
+    logger.info('query read')
+
+    # Long format df
+    df = pd.DataFrame(result, columns=['ticker', 'field', 'date', 'value'])
+    # Create multi-index DataFrame with columns for ticker-fields
+    df = df.pivot_table(
+        index='date',
+        columns=['ticker', 'field'],
+        values='value'
+    )
+
+    return df
 
 
 # ------------------------------ WRITE QUERIES --------------------------------
