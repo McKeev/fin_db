@@ -13,6 +13,7 @@ Script for daily ingesting for `observations` table.
 import datetime as dt
 import os
 from pathlib import Path
+from typing import Literal
 # Third Party Imports
 from dotenv import load_dotenv
 import pandas as pd
@@ -50,7 +51,9 @@ def etl(
     tickers: list[str],
     sdate: str,
     edate: str,
+    transform: Literal['normal', 'currency'] = 'normal',
 ):
+    """ETL function for Yahoo Finance data."""
 
     puller = fdb.providers.YFinPuller(
         tickers=tickers,
@@ -77,6 +80,12 @@ def etl(
     )
     df['identifier'] = df['identifier'].map(iid_mapping)
     df = df.rename(columns={'identifier': 'instrument_id'})
+
+    if transform == 'currency':
+        # We pull the rate in indirect form for more precision,
+        # but we to store it in direct form in the DB
+        df['value'] = 1 / df['value']
+        df['value'] = df['value'] / 0.00001  # Store as pipette
 
     # Write to DB
     fdb.queries.ingest_observations(
@@ -120,14 +129,29 @@ def main():
     sdate = today - dt.timedelta(days=30)
 
     for (asset_class, fields), tickers in update_dict.items():
-        # TODO Implement currency ingest
-        if asset_class != 'currency':
+        if asset_class == 'currency':
             etl(
                 fields=list(fields),
                 tickers=tickers,
                 sdate=str(sdate),
-                edate=str(today)
+                edate=str(today),
+                transform='currency',
             )
+            # Refresh materialized view for currency pairs
+            conn = fdb.session.db_conn()
+            with conn.cursor() as cur:
+                cur.execute("REFRESH MATERIALIZED VIEW units_ts;")
+                conn.commit()
+                logger.info("Refreshed materialized view: units_ts")
+        else:
+            etl(
+                fields=list(fields),
+                tickers=tickers,
+                sdate=str(sdate),
+                edate=str(today),
+                transform='normal',
+            )
+
     # Check for any instruments that have not been updated in the last 5 days
     no_updates = fdb.queries.check_updates(
         cutoff_date=str(today - dt.timedelta(days=5))

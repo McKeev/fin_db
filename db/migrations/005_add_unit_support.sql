@@ -202,6 +202,7 @@ SELECT
 FROM spine_with_groups
 ;
 CREATE UNIQUE INDEX idx_units_ts_code_date ON units_ts (code, date);
+GRANT MAINTAIN ON units_ts TO fin_db_app;
 
 \echo '----------------------- Create time_series_usd -----------------------'
 CREATE VIEW time_series_usd AS

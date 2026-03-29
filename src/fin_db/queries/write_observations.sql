@@ -5,13 +5,13 @@ INSERT INTO observations (
     field,
     date,
     source,
-    value,
+    value
 ) VALUES (
     %(instrument_id)s,
     %(field)s,
     %(date)s,
     %(source)s,
-    %(value)s,
+    %(value)s
 )
 ON CONFLICT (instrument_id, field, date, source)
 DO UPDATE SET
