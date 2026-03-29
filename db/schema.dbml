@@ -27,10 +27,10 @@ Table "observations" {
   "date" date [not null]
   "source" varchar [not null]
   "value" numeric(19,5) [not null]
-  "scale" numeric(19,5) [not null]
 
   Indexes {
     (instrument_id, field, date, source) [pk, type: btree, name: "observations_pkey"]
+    (field, date, instrument_id) [type: btree, name: "idx_obs_field_date"]
     (instrument_id, field, date) [type: btree, name: "idx_obs_lookup"]
   }
 }
@@ -73,6 +73,18 @@ Table "identifiers" {
   }
 }
 
+Table "fields" {
+  "name" varchar [pk, not null]
+  "scale" numeric(12,4) [not null]
+  "fx_conversion" varchar
+}
+
+Table "units" {
+  "code" bpchar(3) [pk, not null]
+  "scale" numeric(10,7) [not null]
+  "instrument_id" bpchar(20)
+}
+
 Ref "identifiers_new_instrument_id_fkey":"instruments"."instrument_id" < "identifiers"."instrument_id"
 
 Ref "identifiers_new_source_fkey":"sources"."name" < "identifiers"."source"
@@ -83,9 +95,15 @@ Ref "ingest_failures_source_fkey":"sources"."name" < "ingest_failures"."source"
 
 Ref "instrument_attributes_instrument_id_fkey":"instruments"."instrument_id" < "instrument_attributes"."instrument_id"
 
+Ref "fk_unit":"units"."code" < "instruments"."unit"
+
+Ref "fk_field":"fields"."name" < "observations"."field"
+
 Ref "observations_instrument_id_fkey":"instruments"."instrument_id" < "observations"."instrument_id"
 
 Ref "observations_source_fkey":"sources"."name" < "observations"."source"
+
+Ref "fk_instrument":"instruments"."instrument_id" < "units"."instrument_id"
 
 Ref "updates_instrument_id_fkey":"instruments"."instrument_id" < "updates"."instrument_id"
 

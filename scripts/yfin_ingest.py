@@ -119,13 +119,15 @@ def main():
     today = dt.date.today()
     sdate = today - dt.timedelta(days=30)
 
-    for fields, tickers in update_dict.items():
-        etl(
-            fields=list(fields),
-            tickers=tickers,
-            sdate=str(sdate),
-            edate=str(today)
-        )
+    for (asset_class, fields), tickers in update_dict.items():
+        # TODO Implement currency ingest
+        if asset_class != 'currency':
+            etl(
+                fields=list(fields),
+                tickers=tickers,
+                sdate=str(sdate),
+                edate=str(today)
+            )
     # Check for any instruments that have not been updated in the last 5 days
     no_updates = fdb.queries.check_updates(
         cutoff_date=str(today - dt.timedelta(days=5))

@@ -136,9 +136,9 @@ def to_update(
 
     Returns
     -------
-    dict[tuple[str, ...], list[str]]
-        A dictionary where the keys are tuples of fields to update with
-        corresponding tickers as values.
+    dict[tuple[str, tuple[str, ...]], list[str]]
+        A dictionary where the keys are tuples of asset classes and field sets
+        to update with corresponding tickers as values.
     """
 
     if source not in valid_sources():
@@ -154,9 +154,11 @@ def to_update(
         },
     )
     result_dict = {
-        # Convert lists of fields to tuples
-        tuple(k) if isinstance(k, list) else (k,): v
-        for k, v in result
+        (
+            asset_class, tuple(fields)
+            if isinstance(fields, list) else (fields,)
+        ): tickers
+        for asset_class, fields, tickers in result
     }
     return result_dict
 

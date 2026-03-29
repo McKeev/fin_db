@@ -6,16 +6,13 @@ INSERT INTO observations (
     date,
     source,
     value,
-    scale
 ) VALUES (
     %(instrument_id)s,
     %(field)s,
     %(date)s,
     %(source)s,
     %(value)s,
-    %(scale)s
 )
 ON CONFLICT (instrument_id, field, date, source)
 DO UPDATE SET
-    value = EXCLUDED.value,
-    scale = EXCLUDED.scale;
+    value = EXCLUDED.value;
