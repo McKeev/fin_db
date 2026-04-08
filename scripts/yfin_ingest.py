@@ -152,6 +152,13 @@ def main():
                 transform='normal',
             )
 
+    # Refresh materialized view for time series data
+    conn = fdb.session.db_conn()
+    with conn.cursor() as cur:
+        cur.execute("REFRESH MATERIALIZED VIEW time_series_usd;")
+        conn.commit()
+        logger.info("Refreshed materialized view: time_series_usd")
+
     # Check for any instruments that have not been updated in the last 5 days
     no_updates = fdb.queries.check_updates(
         cutoff_date=str(today - dt.timedelta(days=5))

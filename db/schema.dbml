@@ -2,7 +2,6 @@ Table "instruments" {
   "instrument_id" bpchar(20) [pk, not null]
   "name" varchar [unique, not null]
   "asset_class" varchar [not null]
-  "unit" varchar [not null]
   "internal_ticker" varchar [unique, not null]
 }
 
@@ -85,6 +84,23 @@ Table "units" {
   "instrument_id" bpchar(20)
 }
 
+Table "instrument_units" {
+  "instrument_id" bpchar(20) [not null]
+  "unit" bpchar(3) [not null]
+  "start_date" date [not null]
+  "end_date" date [not null, default: '9999-12-31']
+
+  Checks {
+    `start_date < end_date` [name: 'ck_instrument_units_dates']
+  }
+
+  Indexes {
+    (instrument_id, start_date) [pk, type: btree, name: "instrument_units_pkey"]
+    (instrument_id, `daterange(start_date`, ` end_date`, ` '[)'::text)`) [type: gist, name: "ex_instrument_units_no_overlap"]
+    (instrument_id, start_date, end_date) [type: btree, name: "idx_instrument_units_lookup"]
+  }
+}
+
 Ref "identifiers_new_instrument_id_fkey":"instruments"."instrument_id" < "identifiers"."instrument_id"
 
 Ref "identifiers_new_source_fkey":"sources"."name" < "identifiers"."source"
@@ -95,7 +111,9 @@ Ref "ingest_failures_source_fkey":"sources"."name" < "ingest_failures"."source"
 
 Ref "instrument_attributes_instrument_id_fkey":"instruments"."instrument_id" < "instrument_attributes"."instrument_id"
 
-Ref "fk_unit":"units"."code" < "instruments"."unit"
+Ref "fk_instrument_units_instrument":"instruments"."instrument_id" < "instrument_units"."instrument_id"
+
+Ref "fk_instrument_units_unit":"units"."code" < "instrument_units"."unit"
 
 Ref "fk_field":"fields"."name" < "observations"."field"
 
@@ -104,6 +122,8 @@ Ref "observations_instrument_id_fkey":"instruments"."instrument_id" < "observati
 Ref "observations_source_fkey":"sources"."name" < "observations"."source"
 
 Ref "fk_instrument":"instruments"."instrument_id" < "units"."instrument_id"
+
+Ref "fk_updates_field":"fields"."name" < "updates"."field"
 
 Ref "updates_instrument_id_fkey":"instruments"."instrument_id" < "updates"."instrument_id"
 

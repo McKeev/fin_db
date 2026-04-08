@@ -80,6 +80,22 @@ ENV_FILE=db/ops/.env bash db/migrations/run.sh 001
 ## Migrations
 
 
+### `006_support_currency_change.sql`
+
+Purpose: supports currency/listing changes over time with effective-dated instrument units.
+
+What it does:
+
+- Adds `instrument_units` table to track unit history per instrument across date ranges
+- Enforces non-overlapping effective date ranges per instrument for temporal integrity
+- Backfills `instrument_units` from `instruments.unit` using each instrument's first observation date
+- Rebuilds `time_series_usd` to resolve unit by `(instrument_id, date)` instead of static `instruments.unit`
+- Materializes `time_series_usd` and adds lookup indexes for ticker/date and instrument/date query paths
+- Drops `instruments.unit` after migrating unit responsibility to `instrument_units`
+
+---
+
+
 ### `005_add_unit_support.sql`
 
 Purpose: adds support for value scaling and currency/unit handling.

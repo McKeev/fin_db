@@ -282,7 +282,7 @@ def hist(
             'edate': edate.date().isoformat()
         }
     )
-    logger.info('query read')
+    logger.debug('Query read')
 
     # Long format df
     df = pd.DataFrame(result, columns=['ticker', 'field', 'date', 'value'])
