@@ -11,6 +11,7 @@ Creates the instrument_id used in the database
 # ----------------------------------------------------------------------------
 # First Party Imports
 import re
+import hashlib
 
 # ----------------------------------------------------------------------------
 # ============================= CONSTANTS ====================================
@@ -20,9 +21,8 @@ ASSET_CLASSES = {
     "equity": "EQU",
     "equity_etf": "ETF",
     "index": "IND",
-    "crypto": "CRY",
     "currency": "CUR",
-    "commodity": "COM",
+    "portfolio": "PFX",
 }
 
 _ISIN_RE = re.compile(r"^[A-Z]{2}[A-Z0-9]{9}[0-9]$")
@@ -66,6 +66,8 @@ def create_instrument_id(asset_class: str, code: str, hash_on: str) -> str:
                 raise ValueError(
                     f"Invalid quote currency code for currency pair: {hash_on}"
                 )
+        case "portfolio":  # Use a hash of the portfolio name
+            hash_val = get_hex_hash(hash_on.upper(), 13)
         case _:
             raise NotImplementedError(
                 "Hash creation not implemented for this asset class."
@@ -100,6 +102,13 @@ def _valid_isin(isin: str) -> bool:
         double = not double
 
     return total % 10 == 0
+
+
+def get_hex_hash(name, length=13):
+    # Create an MD5 hash of the name
+    hash_object = hashlib.md5(name.encode())
+    # Convert to hex string and truncate
+    return (hash_object.hexdigest()[:length]).upper()
 
 
 # ----------------------------------------------------------------------------

@@ -79,6 +79,21 @@ ENV_FILE=db/ops/.env bash db/migrations/run.sh 001
 
 ## Migrations
 
+### `007_portfolio_support.sql`
+
+Purpose: adds portfolio activity storage and a holdings view.
+
+What it does:
+
+- Adds synthetic USD observations for every trading day used by the portfolio view
+- Rebuilds `time_series_usd` to handle currency instruments correctly
+- Creates a dedicated `transaction_type` enum for portfolio events
+- Creates `portfolio_activity` to store broker transactions
+- Builds `portfolio_holdings` to combine position activity and cash into a unified holdings view
+- Adds lookup indexes for `time_series_usd` and portfolio holdings queries
+
+---
+
 
 ### `006_support_currency_change.sql`
 

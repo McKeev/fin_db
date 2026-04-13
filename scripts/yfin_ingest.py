@@ -87,6 +87,17 @@ def etl(
         df['value'] = 1 / df['value']
         df['value'] = df['value'] / 0.00001  # Store as pipette
 
+        # Create USD observations for each date in the df
+        dates = df['date'].unique()
+        usd_df = pd.DataFrame({
+            'instrument_id': 'CURUSDXUSDXXXXXXXXXX',
+            'field': 'close',
+            'date': dates,
+            'value': 100_000,  # 1 pipette in USD
+            'source': 'system',
+        })
+        df = pd.concat([df, usd_df], ignore_index=True)
+
     # Write to DB
     fdb.queries.ingest_observations(
         df=df,

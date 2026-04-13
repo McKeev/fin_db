@@ -97,8 +97,8 @@ class LSEGPuller:
                         f"from {self.sdate.date()} to {self.edate.date()}")
 
             for i, batch in enumerate(self.batches):
-                logger.info(f"Pulling batch {i + 1} of "
-                            f"{len(self.batches)}: {batch}")
+                logger.debug(f"Pulling batch {i + 1} of "
+                             f"{len(self.batches)}: {batch}")
 
                 try:
                     data = self._LSEG_pull(batch, field)
