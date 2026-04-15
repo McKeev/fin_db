@@ -90,8 +90,8 @@ class YFinPuller:
 
             for i, batch in enumerate(batches):
                 time.sleep(SLEEP)
-                logger.info(f"Pulling batch {i + 1} of "
-                            f"{len(batches)}: {batch}")
+                logger.debug(f"Pulling batch {i + 1} of "
+                             f"{len(batches)}: {batch}")
                 try:
                     data, failed = self._yfin_pull(batch, fields)
                     frames.append(data)

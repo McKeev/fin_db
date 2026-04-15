@@ -11,6 +11,7 @@ from .execute import (
     ingest_attributes,
     ingest_updates,
     ingest_identifiers,
+    refresh_portfolios_obs,
 )
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     'ingest_attributes',
     'ingest_updates',
     'ingest_identifiers',
+    'refresh_portfolios_obs',
 ]

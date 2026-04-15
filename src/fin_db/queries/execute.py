@@ -56,7 +56,7 @@ def query_read(
     identifiers : dict[str, str] | None, optional
         Identifiers to pass to the query, by default None.
     """
-    with open(QUERIES / query_file, 'r') as f:
+    with open(QUERIES / 'read' / query_file, 'r') as f:
         query_text = f.read()
     query_obj = sql.SQL(query_text)
     if identifiers:
@@ -90,7 +90,7 @@ def query_write(
     commit : bool, optional
         Whether to commit the transaction, by default True.
     """
-    with open(QUERIES / query_file, 'r') as f:
+    with open(QUERIES / 'write' / query_file, 'r') as f:
         query_text = f.read()
     query_obj = sql.SQL(query_text)
     if identifiers:
@@ -488,5 +488,26 @@ def ingest_identifiers(
     query_write(
         'write_identifiers.sql',
         params=df.to_dict(orient='records'),
+        commit=commit
+    )
+
+
+def refresh_portfolios_obs(
+    commit: bool = True
+) -> None:
+    """
+    Refresh portfolio observations based on holdings and prices.
+
+    Parameters
+    ----------
+    commit : bool, optional
+        Whether to commit the transaction, by default True.
+
+    Returns
+    -------
+    None
+    """
+    query_write(
+        'refresh_portfolios.sql',
         commit=commit
     )

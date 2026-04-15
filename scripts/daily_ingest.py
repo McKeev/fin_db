@@ -1,5 +1,5 @@
 """
-File Name: yfin_daily.py
+File Name: daily_ingest.py
 Author: Cedric McKeever
 Date: 2026-03-17
 Description:
@@ -26,16 +26,17 @@ import fin_db as fdb
 # ----------------------------------------------------------------------------
 
 _FIN_DB_DIR = Path(__file__).parent.parent
-_LOG_FILE = _FIN_DB_DIR / 'logs' / 'yahoo_daily_ingest.log'
+_LOG_FILE = _FIN_DB_DIR / 'logs' / 'daily_ingest.log'
 _BATCH_SIZE = 5
-_MAX_ATTEMPTS = 5
+_MAX_ATTEMPTS = 3
 load_dotenv(_FIN_DB_DIR / "scripts/.env")
 fdb.setup_telebot(
     token=os.getenv('TELEGRAM_BOT_TOKEN'),
     chat_id=os.getenv('TELEGRAM_CHAT_ID'),
 )
 logger = fdb.setup_logger(
-    'yahoo_daily_ingest',
+    'daily_ingest',
+    level='INFO',
     log_file=_LOG_FILE,
     telegram_critical=True,
 )
@@ -134,12 +135,15 @@ def etl(
         )
 
 
-def main():
+def yahoo_ingest(today):
     update_dict = fdb.queries.to_update(frequency='daily', source='YAHOO')
-    today = dt.date.today()
     sdate = today - dt.timedelta(days=30)
 
     for (asset_class, fields), tickers in update_dict.items():
+        logger.info(
+            f"Starting ingest for {len(tickers)} tickers of asset class "
+            f"{asset_class} and fields {fields}."
+        )
         if asset_class == 'currency':
             etl(
                 fields=list(fields),
@@ -163,18 +167,46 @@ def main():
                 transform='normal',
             )
 
-    # Refresh materialized view for time series data
+
+def _refresh_ts_usd():
+    """Refresh materialized view for time series data"""
     conn = fdb.session.db_conn()
     with conn.cursor() as cur:
         cur.execute("REFRESH MATERIALIZED VIEW time_series_usd;")
         conn.commit()
         logger.info("Refreshed materialized view: time_series_usd")
 
+
+def main():
+
+    today = dt.date.today()
+    logger.info(
+        "\n\n"
+        "===============================================================\n"
+        f"||         Starting daily ingest job for {today}.        ||"
+        "\n==============================================================="
+    )
+    logger.info("Starting Yahoo Finance ingest.")
+    yahoo_ingest(today)
+    logger.info("Completed Yahoo Finance ingest.")
+
+    _refresh_ts_usd()
+
+    # Refresh portfolio observations
+    fdb.queries.refresh_portfolios_obs()
+    logger.info("Refreshed portfolio observations.")
+
+    _refresh_ts_usd()
+
     # Check for any instruments that have not been updated in the last 5 days
     no_updates = fdb.queries.check_updates(
         cutoff_date=str(today - dt.timedelta(days=5))
     )
     if no_updates:
+        logger.warning(
+            f"Found {len(no_updates)} instruments-fields that have not been "
+            "updated in the last 5 days."
+        )
         no_updates = pd.DataFrame(no_updates)
         no_updates = no_updates.groupby(
             ['instrument_id', 'name', 'last_update']
@@ -189,12 +221,14 @@ def main():
             for iid, name, last_update, fields
             in no_updates.itertuples(index=False)
         )
-        fdb.get_telebot().send_msg(
+        message = (
             "WARNING:\n"
             f"Found {len(no_updates)} instruments-fields that have not been "
             "updated in the last 5 days.\n\n"
             f"{formatted_no_updates}"
         )
+        logger.warning(message)
+        fdb.get_telebot().send_msg(message)
     # Clean logs
     fdb.helpers.clear_old_logs(_LOG_FILE, days=30)
 

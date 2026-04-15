@@ -1,3 +1,13 @@
+Enum "transaction_type" {
+  "open"
+  "close"
+  "deposit"
+  "withdrawal"
+  "dividend"
+  "interest"
+  "split"
+}
+
 Table "instruments" {
   "instrument_id" bpchar(20) [pk, not null]
   "name" varchar [unique, not null]
@@ -101,6 +111,23 @@ Table "instrument_units" {
   }
 }
 
+Table "portfolio_activity" {
+  "pf_id" varchar(20) [not null, note: 'Portfolio identifier (instrument_id).']
+  "type" transaction_type [not null, note: 'Transaction type: one of open, close, deposit, withdrawal, dividend, interest, split.']
+  "broker" text [not null, note: 'Broker through which the transaction was executed (e.g. etoro).']
+  "ts" timestamptz [not null, note: 'Transaction timestamp in UTC.']
+  "position_id" text [note: 'Broker-assigned position identifier, shared across all transactions for the same position. Null for cash transactions.']
+  "instrument_id" varchar(20) [note: 'Internal instrument_id. Null for cash transactions.']
+  "units" numeric [note: 'Number of units involved. Positive for opens, negative for closes. Null for cash transactions.']
+  "fee" numeric [note: 'Transaction fee in USD, always non-negative.']
+  "cashflow_usd" numeric [note: 'Net cash impact in USD. Positive = cash in (deposit, dividend), negative = cash out (open, withdrawal). Includes possible fees.']
+  "notes" text [note: 'Optional free-text notes for this transaction.']
+
+  Indexes {
+    (pf_id, type, ts, instrument_id) [type: btree, name: "idx_portfolio_activity_holdings"]
+  }
+}
+
 Ref "identifiers_new_instrument_id_fkey":"instruments"."instrument_id" < "identifiers"."instrument_id"
 
 Ref "identifiers_new_source_fkey":"sources"."name" < "identifiers"."source"
@@ -120,6 +147,10 @@ Ref "fk_field":"fields"."name" < "observations"."field"
 Ref "observations_instrument_id_fkey":"instruments"."instrument_id" < "observations"."instrument_id"
 
 Ref "observations_source_fkey":"sources"."name" < "observations"."source"
+
+Ref "fk_portfolio_activity_instrument":"instruments"."instrument_id" < "portfolio_activity"."instrument_id"
+
+Ref "fk_portfolio_activity_pf_id":"instruments"."instrument_id" < "portfolio_activity"."pf_id"
 
 Ref "fk_instrument":"instruments"."instrument_id" < "units"."instrument_id"
 

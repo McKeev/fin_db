@@ -75,7 +75,7 @@ ENV_FILE=db/ops/.env bash db/migrations/run.sh 001
 - `run.sh` intentionally blocks `000*` bootstrap files.
 - Keep bootstrap credentials out of committed files when possible.
 - For experiments, use `db/sandbox/sandbox.sql` with `BEGIN ... ROLLBACK`.
-- Get recent dbml `db2dbml postgres "postgresql://fin_db_admin@minicomp:5433/fin_db" -o schema.dbml`
+- Get recent dbml `db2dbml postgres "postgresql://fin_db_admin@minicomp:5433/fin_db" -o db/schema.dbml`
 
 ## Migrations
 
