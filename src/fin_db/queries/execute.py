@@ -238,7 +238,7 @@ def check_updates(
     ]
 
 
-def hist(
+def get_hist(
     tickers: str | list[str],
     fields: str | list[str],
     sdate: DateLike,
@@ -286,6 +286,16 @@ def hist(
 
     # Long format df
     df = pd.DataFrame(result, columns=['ticker', 'field', 'date', 'value'])
+
+    # Check data
+    if set(tickers) - set(df['ticker'].unique()):
+        missing = set(tickers) - set(df['ticker'].unique())
+        raise ValueError(f"Data for tickers {missing} not found in database.")
+    elif df.empty:
+        raise ValueError(
+            "No data found for the specified tickers, fields, and date range."
+        )
+
     # Create multi-index DataFrame with columns for ticker-fields
     df = df.pivot_table(
         index='date',

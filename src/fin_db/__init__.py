@@ -13,7 +13,7 @@ from .helpers import (
     setup_telebot,
     get_telebot
 )
-from .queries import hist
+from .queries import get_hist
 
 __all__ = [
     # Submodules
@@ -31,5 +31,5 @@ __all__ = [
     'create_instrument_id',
     'setup_telebot',
     'get_telebot',
-    'hist'
+    'get_hist'
 ]

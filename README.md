@@ -33,7 +33,7 @@ I opted to keep the following as my guiding principle:
 For example, I do not store adjusted close as it is a derived field.
 I instead retrieve raw closing prices (in original currency) and total returns, which allow me to construct adjusted closes if needed.
 I also did my best to keep this project simple and efficient which is the reason I limited the fields I ingest in favour of more instruments.
-I used LSEG (refinitiv) to bootstrap my data and I use Yahoo Finance (their recent data is okay but older datapoints are not great) for [daily ingest jobs](scripts/yfin_ingest.py). 
+I used LSEG (refinitiv) to bootstrap my data and I use Yahoo Finance (their recent data is okay but older datapoints are not great) for [daily ingest jobs](scripts/daily_ingest.py). 
 
 For more information (including my [schema](db/schema.dbml)), I invite you to look through `/db` (excluding `/db/ops`) where you'll find my migrations and others.
 
@@ -52,7 +52,7 @@ I also faced a lot of permission issues and to ensure I wouldn't have to fix the
 In the end, it was worth it!
 My database backs up daily and syncs with Google Drive, allowing for easy restores if (when 😅) I make mistakes.
 
-### Operational Automation [🔗](/scripts/yfin_ingest.py)
+### Operational Automation [🔗](/scripts/daily_ingest.py)
 
 To ensure I don't have to manually ingest data, I had to develop robust automations.
 These are run frequently using cron jobs (a linux feature that allows for scheduling tasks).
