@@ -166,6 +166,10 @@ def yahoo_ingest(today):
                 edate=str(today),
                 transform='normal',
             )
+        logger.info(
+            f"Finished ingest for {len(tickers)} tickers of asset class "
+            f"{asset_class} and fields {fields}."
+        )
 
 
 def _refresh_ts_usd():
@@ -180,11 +184,9 @@ def _refresh_ts_usd():
 def main():
 
     today = dt.date.today()
-    logger.info(
-        "\n\n"
-        "===============================================================\n"
-        f"||         Starting daily ingest job for {today}.        ||"
-        "\n==============================================================="
+    fdb.open_session(
+            user='fin_db_app',
+            host='minicomp',
     )
     logger.info("Starting Yahoo Finance ingest.")
     yahoo_ingest(today)
@@ -203,10 +205,6 @@ def main():
         cutoff_date=str(today - dt.timedelta(days=5))
     )
     if no_updates:
-        logger.warning(
-            f"Found {len(no_updates)} instruments-fields that have not been "
-            "updated in the last 5 days."
-        )
         no_updates = pd.DataFrame(no_updates)
         no_updates = no_updates.groupby(
             ['instrument_id', 'name', 'last_update']
@@ -227,8 +225,8 @@ def main():
             "updated in the last 5 days.\n\n"
             f"{formatted_no_updates}"
         )
-        logger.warning(message)
-        fdb.get_telebot().send_msg(message)
+        logger.critical(message)
+
     # Clean logs
     fdb.helpers.clear_old_logs(_LOG_FILE, days=30)
 
@@ -238,14 +236,12 @@ def main():
 # ----------------------------------------------------------------------------
 if __name__ == '__main__':
     try:
-        fdb.open_session(
-            user='fin_db_app',
-            host='minicomp',
-        )
+        logger.info("Starting daily ingest job.")
         main()
         fdb.get_telebot().send_msg(
             "Yahoo daily ingest completed successfully."
         )
+        logger.info("Completed daily ingest job.")
     except Exception as e:
         # Should not be possible for an exception to be raised without being
         # caught in the main(). This is just a precaution.
