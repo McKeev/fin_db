@@ -12,9 +12,11 @@ This module executes queries found in this submodule.
 # First Party Imports
 from typing import Any
 import logging
+
 # Third Party Imports
 from psycopg import sql
 import pandas as pd
+
 # Local Imports
 from fin_db.constants import ROOT_DIR
 from fin_db.session import db_conn
@@ -27,7 +29,7 @@ logger = logging.getLogger(__name__)
 # ----------------------------------------------------------------------------
 
 
-QUERIES = ROOT_DIR / 'queries'
+QUERIES = ROOT_DIR / "queries"
 
 
 # ----------------------------------------------------------------------------
@@ -42,7 +44,7 @@ QUERIES = ROOT_DIR / 'queries'
 def query_read(
     query_file: str,
     params: dict[str, Any] | tuple[Any, ...] | None = None,
-    identifiers: dict[str, str] | None = None
+    identifiers: dict[str, str] | None = None,
 ) -> list[tuple[Any, ...]]:
     """
     Execute a SQL query from a file.
@@ -56,7 +58,7 @@ def query_read(
     identifiers : dict[str, str] | None, optional
         Identifiers to pass to the query, by default None.
     """
-    with open(QUERIES / 'read' / query_file, 'r') as f:
+    with open(QUERIES / "read" / query_file, "r") as f:
         query_text = f.read()
     query_obj = sql.SQL(query_text)
     if identifiers:
@@ -74,7 +76,7 @@ def query_write(
     query_file: str,
     params: dict[str, Any] | list[dict[str, Any]] | None = None,
     identifiers: dict[str, str] | None = None,
-    commit: bool = True
+    commit: bool = True,
 ) -> None:
     """
     Execute a SQL write query from a file.
@@ -90,7 +92,7 @@ def query_write(
     commit : bool, optional
         Whether to commit the transaction, by default True.
     """
-    with open(QUERIES / 'write' / query_file, 'r') as f:
+    with open(QUERIES / "write" / query_file, "r") as f:
         query_text = f.read()
     query_obj = sql.SQL(query_text)
     if identifiers:
@@ -119,8 +121,7 @@ def query_write(
 
 
 def to_update(
-    frequency: str = 'daily',
-    source: str = 'YAHOO'
+    frequency: str = "daily", source: str = "YAHOO"
 ) -> dict[tuple[str, ...], list[str]]:
     """
     Get a list of updates to perform, grouped by instrument.
@@ -147,26 +148,23 @@ def to_update(
             f"Supported sources are: {list(valid_sources())}"
         )
     result = query_read(
-        'updates_list.sql',
+        "updates_list.sql",
         params={
-            'frequency': frequency,
-            'source': source,
+            "frequency": frequency,
+            "source": source,
         },
     )
     result_dict = {
         (
-            asset_class, tuple(fields)
-            if isinstance(fields, list) else (fields,)
+            asset_class,
+            tuple(fields) if isinstance(fields, list) else (fields,),
         ): tickers
         for asset_class, fields, tickers in result
     }
     return result_dict
 
 
-def get_iid_mapping(
-    tickers: str | list[str],
-    source: str
-) -> dict[str, str]:
+def get_iid_mapping(tickers: str | list[str], source: str) -> dict[str, str]:
     """
     Get internal `instrument_id`s for a list of external tickers.
 
@@ -196,18 +194,13 @@ def get_iid_mapping(
     tickers = [str(ticker) for ticker in tickers]
 
     result = query_read(
-        'instrument_id_mapping.sql',
-        params={
-            'tickers': tickers,
-            'source': source
-        }
+        "instrument_id_mapping.sql",
+        params={"tickers": tickers, "source": source},
     )
     return {row[0]: row[1] for row in result}
 
 
-def check_updates(
-    cutoff_date: str
-) -> list[dict[str, Any]]:
+def check_updates(cutoff_date: str) -> list[dict[str, Any]]:
     """
     Check which instruments have not been updated after cutoff date.
 
@@ -224,15 +217,14 @@ def check_updates(
         `last_update` of concerned instruments.
     """
     result = query_read(
-        'check_updates.sql',
-        params={'cutoff_date': cutoff_date}
+        "check_updates.sql", params={"cutoff_date": cutoff_date}
     )
     return [
         {
-            'instrument_id': row[0],
-            'name': row[1],
-            'field': row[2],
-            'last_update': row[3]
+            "instrument_id": row[0],
+            "name": row[1],
+            "field": row[2],
+            "last_update": row[3],
         }
         for row in result
     ]
@@ -274,22 +266,22 @@ def get_hist(
     edate = to_datetime(edate)
 
     result = query_read(
-        'usd_ts.sql',
+        "usd_ts.sql",
         params={
-            'tickers': tickers,
-            'fields': fields,
-            'sdate': sdate.date().isoformat(),
-            'edate': edate.date().isoformat()
-        }
+            "tickers": tickers,
+            "fields": fields,
+            "sdate": sdate.date().isoformat(),
+            "edate": edate.date().isoformat(),
+        },
     )
-    logger.debug('Query read')
+    logger.debug("Query read")
 
     # Long format df
-    df = pd.DataFrame(result, columns=['ticker', 'field', 'date', 'value'])
+    df = pd.DataFrame(result, columns=["ticker", "field", "date", "value"])
 
     # Check data
-    if set(tickers) - set(df['ticker'].unique()):
-        missing = set(tickers) - set(df['ticker'].unique())
+    if set(tickers) - set(df["ticker"].unique()):
+        missing = set(tickers) - set(df["ticker"].unique())
         raise ValueError(f"Data for tickers {missing} not found in database.")
     elif df.empty:
         raise ValueError(
@@ -298,9 +290,7 @@ def get_hist(
 
     # Create multi-index DataFrame with columns for ticker-fields
     df = df.pivot_table(
-        index='date',
-        columns=['ticker', 'field'],
-        values='value'
+        index="date", columns=["ticker", "field"], values="value"
     )
 
     return df
@@ -309,10 +299,7 @@ def get_hist(
 # ------------------------------ WRITE QUERIES --------------------------------
 
 
-def ingest_observations(
-    df: pd.DataFrame,
-    commit: bool = True
-) -> None:
+def ingest_observations(df: pd.DataFrame, commit: bool = True) -> None:
     """
     Ingest a DataFrame of observations into the database.
     CAUTION:
@@ -333,26 +320,23 @@ def ingest_observations(
     """
     # Write to DB
     query_write(
-        'write_observations.sql',
-        params=df.to_dict(orient='records'),
-        commit=commit
+        "write_observations.sql",
+        params=df.to_dict(orient="records"),
+        commit=commit,
     )
     # Log the successful updates into `updates`
     query_write(
-        'log_updates.sql',
+        "log_updates.sql",
         params=(
-            df[['instrument_id', 'field', 'source']]
+            df[["instrument_id", "field", "source"]]
             .drop_duplicates()
-            .to_dict(orient='records')
+            .to_dict(orient="records")
         ),
-        commit=commit
+        commit=commit,
     )
 
 
-def log_failed_ingest(
-    df: pd.DataFrame,
-    commit: bool = True
-) -> None:
+def log_failed_ingest(df: pd.DataFrame, commit: bool = True) -> None:
     """
     Log failed ingestions into the database.
     CAUTION:
@@ -374,16 +358,11 @@ def log_failed_ingest(
     """
     # Write to DB
     query_write(
-        'write_fails.sql',
-        params=df.to_dict(orient='records'),
-        commit=commit
+        "write_fails.sql", params=df.to_dict(orient="records"), commit=commit
     )
 
 
-def ingest_instruments(
-    df: pd.DataFrame,
-    commit: bool = True
-) -> None:
+def ingest_instruments(df: pd.DataFrame, commit: bool = True) -> None:
     """
     Ingest a DataFrame of instruments into the database.
     CAUTION:
@@ -405,16 +384,13 @@ def ingest_instruments(
     None
     """
     query_write(
-        'write_instruments.sql',
-        params=df.to_dict(orient='records'),
-        commit=commit
+        "write_instruments.sql",
+        params=df.to_dict(orient="records"),
+        commit=commit,
     )
 
 
-def ingest_attributes(
-    df: pd.DataFrame,
-    commit: bool = True
-) -> None:
+def ingest_attributes(df: pd.DataFrame, commit: bool = True) -> None:
     """
     Ingest a DataFrame of attributes into the database.
     CAUTION:
@@ -435,16 +411,13 @@ def ingest_attributes(
     None
     """
     query_write(
-        'write_attributes.sql',
-        params=df.to_dict(orient='records'),
-        commit=commit
+        "write_attributes.sql",
+        params=df.to_dict(orient="records"),
+        commit=commit,
     )
 
 
-def ingest_updates(
-    df: pd.DataFrame,
-    commit: bool = True
-) -> None:
+def ingest_updates(df: pd.DataFrame, commit: bool = True) -> None:
     """
     Ingest a DataFrame of updates into the database.
     CAUTION:
@@ -466,16 +439,11 @@ def ingest_updates(
     """
     # Write to DB
     query_write(
-        'write_updates.sql',
-        params=df.to_dict(orient='records'),
-        commit=commit
+        "write_updates.sql", params=df.to_dict(orient="records"), commit=commit
     )
 
 
-def ingest_identifiers(
-    df: pd.DataFrame,
-    commit: bool = True
-) -> None:
+def ingest_identifiers(df: pd.DataFrame, commit: bool = True) -> None:
     """
     Ingest a DataFrame of identifiers into the database.
     CAUTION:
@@ -496,15 +464,13 @@ def ingest_identifiers(
     None
     """
     query_write(
-        'write_identifiers.sql',
-        params=df.to_dict(orient='records'),
-        commit=commit
+        "write_identifiers.sql",
+        params=df.to_dict(orient="records"),
+        commit=commit,
     )
 
 
-def refresh_portfolios_obs(
-    commit: bool = True
-) -> None:
+def refresh_portfolios_obs(commit: bool = True) -> None:
     """
     Refresh portfolio observations based on holdings and prices.
 
@@ -517,7 +483,4 @@ def refresh_portfolios_obs(
     -------
     None
     """
-    query_write(
-        'refresh_portfolios.sql',
-        commit=commit
-    )
+    query_write("refresh_portfolios.sql", commit=commit)

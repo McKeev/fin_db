@@ -1,4 +1,5 @@
 """Logger configuration for fin_db."""
+
 import logging
 import colorlog
 import datetime as dt
@@ -94,10 +95,12 @@ def setup_logger(
     if telegram_critical:
         tele_handler = TelegramCriticalHandler()
         tele_handler.setLevel(logging.CRITICAL)
-        tele_handler.setFormatter(logging.Formatter(
-            "%(asctime)s\n%(name)s | %(levelname)s\n\n%(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        ))
+        tele_handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s\n%(name)s | %(levelname)s\n\n%(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
+        )
         root.addHandler(tele_handler)
 
     _logging_configured = True
@@ -117,12 +120,12 @@ def clear_old_logs(log_file: str, days: int = 30) -> None:
         Number of days to retain logs. Logs older than this will be removed.
     """
     cutoff_date = dt.datetime.now() - dt.timedelta(days=days)
-    with open(log_file, 'r') as f:
+    with open(log_file, "r") as f:
         lines = f.readlines()
-    with open(log_file, 'w') as f:
+    with open(log_file, "w") as f:
         for line in lines:
             try:
-                timestamp_str = line.split(' - ')[0]
+                timestamp_str = line.split(" - ")[0]
                 timestamp = dt.datetime.strptime(
                     timestamp_str, "%Y-%m-%d %H:%M:%S"
                 )

@@ -14,9 +14,11 @@ import datetime as dt
 import logging
 import time
 import math
+
 # Third Party Imports
 import pandas as pd
 import yfinance as yf
+
 # Local Imports
 from fin_db.constants import FIELDS
 
@@ -51,9 +53,7 @@ class YFinPuller:
         self.max_attempts = max_attempts
 
     def histpull(
-        self,
-        fields: str | list[str],
-        return_failed: bool = False
+        self, fields: str | list[str], return_failed: bool = False
     ) -> pd.DataFrame | tuple[pd.DataFrame, dict[str, str]]:
         """
         Allows pulling historical data for a list of tickers and fields, with
@@ -90,8 +90,9 @@ class YFinPuller:
 
             for i, batch in enumerate(batches):
                 time.sleep(SLEEP)
-                logger.debug(f"Pulling batch {i + 1} of "
-                             f"{len(batches)}: {batch}")
+                logger.debug(
+                    f"Pulling batch {i + 1} of {len(batches)}: {batch}"
+                )
                 try:
                     data, failed = self._yfin_pull(batch, fields)
                     frames.append(data)
@@ -125,7 +126,12 @@ class YFinPuller:
         if not frames:
             empty = pd.DataFrame(
                 columns=[
-                    'identifier', 'field', 'date', 'source', 'value', 'scale'
+                    "identifier",
+                    "field",
+                    "date",
+                    "source",
+                    "value",
+                    "scale",
                 ]
             )
             return (empty, failed_tickers) if return_failed else empty
@@ -135,9 +141,7 @@ class YFinPuller:
             return pd.concat(frames, ignore_index=True)
 
     def _yfin_pull(
-        self,
-        tickers: list,
-        fields: list
+        self, tickers: list, fields: list
     ) -> tuple[pd.DataFrame, dict[str, str]]:
         """
         Pull fields for a list of tickers.
@@ -159,7 +163,7 @@ class YFinPuller:
             issues) and their error messages.
         """
 
-        if 'totret' in fields:
+        if "totret" in fields:
             sdate = self.sdate - dt.timedelta(days=1)
         else:
             sdate = self.sdate
@@ -171,7 +175,7 @@ class YFinPuller:
             actions=True,
             progress=False,
             multi_level_index=True,
-            threads=False  # Slower but more reliable for large batches
+            threads=False,  # Slower but more reliable for large batches
         )
         # Basic validation to check if data looks correct
         if data.empty or data.isna().all().all():
@@ -197,9 +201,7 @@ class YFinPuller:
 
     @staticmethod
     def _process_ticker(
-        ticker: str,
-        ticker_data: pd.DataFrame,
-        fields: list
+        ticker: str, ticker_data: pd.DataFrame, fields: list
     ) -> pd.DataFrame:
         """
         Process raw data for a single ticker, calculating necessary fields and
@@ -224,55 +226,61 @@ class YFinPuller:
         ticker_data = ticker_data.copy()  # mutability
         # Drop rows where close is NaN, as these are likely non-trading days
         ticker_data = ticker_data.dropna(
-            subset=['Close', 'Adj Close'], how='all'
+            subset=["Close", "Adj Close"], how="all"
         )
         # Need to calc close if requested
-        if 'close' in fields:
+        if "close" in fields:
             # Calculate split multiplier from 'Stock Splits' column
-            ticker_data['split_mult'] = (
-                ticker_data['Stock Splits'].shift(-1).fillna(1)
+            ticker_data["split_mult"] = (
+                ticker_data["Stock Splits"]
+                .shift(-1)
+                .fillna(1)
                 .replace(0, 1)
-                .iloc[::-1].cumprod().iloc[::-1]  # Reverse cumprod
+                .iloc[::-1]
+                .cumprod()
+                .iloc[::-1]  # Reverse cumprod
             )
-            ticker_data[FIELDS['close']['yfin']] = (
-                ticker_data['Close'] * ticker_data['split_mult']
+            ticker_data[FIELDS["close"]["yfin"]] = (
+                ticker_data["Close"] * ticker_data["split_mult"]
             )
         # Need to calc totret if requested
-        if 'totret' in fields:
-            ticker_data[FIELDS['totret']['yfin']] = (
-                ticker_data['Adj Close'].pct_change(fill_method=None) * 100
+        if "totret" in fields:
+            ticker_data[FIELDS["totret"]["yfin"]] = (
+                ticker_data["Adj Close"].pct_change(fill_method=None) * 100
             )
             ticker_data = ticker_data.iloc[1:]  # Drop first row
 
         # only keep the fields we care about
-        to_keep = [FIELDS[f]['yfin'] for f in fields]
+        to_keep = [FIELDS[f]["yfin"] for f in fields]
         ticker_data = ticker_data[to_keep]
 
         # Rename to corresponding field names
-        rename_dict = {
-            FIELDS[f]['yfin']: f for f in fields
-        }
-        rename_dict['Date'] = 'date'
+        rename_dict = {FIELDS[f]["yfin"]: f for f in fields}
+        rename_dict["Date"] = "date"
         ticker_data = ticker_data.reset_index()
         ticker_data.rename(columns=rename_dict, inplace=True)
 
         ticker_long = (
-            ticker_data
-            .assign(identifier=ticker)
+            ticker_data.assign(identifier=ticker)
             .melt(
-                id_vars=['date', 'identifier'],
+                id_vars=["date", "identifier"],
                 value_vars=fields,
-                var_name='field',
-                value_name='value'
+                var_name="field",
+                value_name="value",
             )
-            .assign(scale=lambda x: x['field'].map(
-                lambda f: FIELDS[f]['scale']
-            ))
-            .assign(source='YAHOO')
-            [[  # Reorder
-                'identifier', 'field', 'date',
-                'source', 'value', 'scale'
-            ]]
+            .assign(
+                scale=lambda x: x["field"].map(lambda f: FIELDS[f]["scale"])
+            )
+            .assign(source="YAHOO")[
+                [  # Reorder
+                    "identifier",
+                    "field",
+                    "date",
+                    "source",
+                    "value",
+                    "scale",
+                ]
+            ]
         )
         if ticker_long.empty or ticker_long.isna().all().all():
             raise ValueError(
@@ -280,15 +288,12 @@ class YFinPuller:
             )
         return ticker_long
 
-    def _split_batches(
-        self,
-        tickers: list
-    ) -> list:
+    def _split_batches(self, tickers: list) -> list:
         batches = []
         """Split tickers into batches."""
         for i in range(0, math.ceil(len(tickers) / self.batch_size)):
-            end = min((i+1) * self.batch_size, len(tickers))
-            batches.append(tickers[i * self.batch_size:end])
+            end = min((i + 1) * self.batch_size, len(tickers))
+            batches.append(tickers[i * self.batch_size : end])
         return batches
 
 
@@ -305,5 +310,5 @@ class AllFailedButLoggedError(Exception):
 # ----------------------------------------------------------------------------
 # =============================== MAIN =======================================
 # ----------------------------------------------------------------------------
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

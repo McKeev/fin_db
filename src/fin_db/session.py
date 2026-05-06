@@ -10,9 +10,9 @@ Implementing a singleton approach for database connection.
 # ============================== IMPORTS =====================================
 # ----------------------------------------------------------------------------
 
-
 # First Party Imports
 import logging
+
 # Third Party Imports
 import psycopg
 # Local Imports
@@ -40,9 +40,9 @@ _conn: psycopg.Connection | None = None
 def open_session(
     user: str,
     password: str | None = None,
-    host: str = 'minicomp',
+    host: str = "minicomp",
     port: int = 5433,
-    dbname: str = 'fin_db',
+    dbname: str = "fin_db",
 ) -> None:
     """
     Open a new database session.
@@ -50,8 +50,8 @@ def open_session(
     global _conn
     if _conn is not None:
         raise Exception(
-            'A session is already open. '
-            'Please close it before opening a new one.'
+            "A session is already open. "
+            "Please close it before opening a new one."
         )
     _conn = psycopg.connect(
         dbname=dbname,
@@ -60,7 +60,7 @@ def open_session(
         host=host,
         port=port,
     )
-    logger.info('Database session opened successfully.')
+    logger.info("Database session opened successfully.")
 
 
 def db_conn() -> psycopg.Connection:
@@ -69,8 +69,9 @@ def db_conn() -> psycopg.Connection:
     """
     if _conn is None:
         raise Exception(
-            'No session is open. '
-            'Please open a session first (`open_session()`).')
+            "No session is open. "
+            "Please open a session first (`open_session()`)."
+        )
     return _conn
 
 
@@ -79,11 +80,11 @@ def close_session() -> None:
     if _conn is not None:
         _conn.close()
         _conn = None
-        logger.info('Database session closed successfully.')
+        logger.info("Database session closed successfully.")
 
 
 # ----------------------------------------------------------------------------
 # =============================== MAIN =======================================
 # ----------------------------------------------------------------------------
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

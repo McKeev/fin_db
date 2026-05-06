@@ -9,11 +9,13 @@ Easy helpers for general use across the package.
 # First Party Imports
 import time
 import re
+
 # Third Party Imports
 from datetime import datetime, date, timedelta
 from dateutil import parser as dateutil_parser
 import numpy as np
 import pandas as pd
+
 # Local Imports
 from fin_db.session import db_conn
 
@@ -28,9 +30,7 @@ def valid_sources() -> set[str]:
     global _SOURCES
     if _SOURCES is None:
         with db_conn().cursor() as cur:
-            cur.execute(
-                "SELECT name FROM sources;"
-            )
+            cur.execute("SELECT name FROM sources;")
             _SOURCES = {row[0] for row in cur.fetchall()}
     return _SOURCES
 
@@ -45,15 +45,19 @@ class InvalidDateError(ValueError):
 
 
 DateLike = (
-    datetime | date | int | float | time.struct_time | timedelta |
-    str | np.datetime64 | pd.Timestamp
+    datetime
+    | date
+    | int
+    | float
+    | time.struct_time
+    | timedelta
+    | str
+    | np.datetime64
+    | pd.Timestamp
 )
 
 
-def to_datetime(
-    value: DateLike,
-    dayfirst=False
-) -> datetime:
+def to_datetime(value: DateLike, dayfirst=False) -> datetime:
     """
     Convert almost anything to a datetime object.
     Accepts: datetime, date, int/float (unix timestamp), struct_time,
@@ -101,9 +105,8 @@ def to_datetime(
 
     # numpy datetime64
     if isinstance(value, np.datetime64):
-        ts = (
-            (value - np.datetime64("1970-01-01T00:00:00"))
-            / np.timedelta64(1, "s")
+        ts = (value - np.datetime64("1970-01-01T00:00:00")) / np.timedelta64(
+            1, "s"
         )
         return datetime.fromtimestamp(ts, tz=time.timezone.utc)
 
@@ -138,4 +141,5 @@ def timer(func):
         end = time.time()
         print(f"{func.__name__} took {end - start:.4f} seconds")
         return result
+
     return wrapper

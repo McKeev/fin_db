@@ -15,17 +15,19 @@ import logging
 import time
 import math
 import warnings
+
 # Third Party Imports
 try:
     import refinitiv.data as rd
 except ImportError:  # pragma: no cover
     rd = None
 import pandas as pd
+
 # Local Imports
 from fin_db.constants import FIELDS
 
 # Silence warnings from external packages
-warnings.filterwarnings('ignore', category=FutureWarning, module='refinitiv')
+warnings.filterwarnings("ignore", category=FutureWarning, module="refinitiv")
 
 logger = logging.getLogger(__name__)
 
@@ -65,10 +67,7 @@ class LSEGPuller:
         self.batches = self._split_batches()
         self.max_retries = max_retries
 
-    def histpull(
-        self,
-        fields: str | list[str]
-    ) -> pd.DataFrame:
+    def histpull(self, fields: str | list[str]) -> pd.DataFrame:
         """
         Allows pulling historical data for a list of tickers and fields, with
         built-in batching and retry logic and data validation to handle LSEG
@@ -93,12 +92,15 @@ class LSEGPuller:
 
         frames = []
         for field in fields:
-            logger.info(f"Pulling '{field}' for {len(self.tickers)} tickers "
-                        f"from {self.sdate.date()} to {self.edate.date()}")
+            logger.info(
+                f"Pulling '{field}' for {len(self.tickers)} tickers "
+                f"from {self.sdate.date()} to {self.edate.date()}"
+            )
 
             for i, batch in enumerate(self.batches):
-                logger.debug(f"Pulling batch {i + 1} of "
-                             f"{len(self.batches)}: {batch}")
+                logger.debug(
+                    f"Pulling batch {i + 1} of {len(self.batches)}: {batch}"
+                )
 
                 try:
                     data = self._LSEG_pull(batch, field)
@@ -122,28 +124,36 @@ class LSEGPuller:
             try:
                 data = rd.get_history(
                     universe=tickers,
-                    fields=[FIELDS[field]['lseg']],
+                    fields=[FIELDS[field]["lseg"]],
                     start=self.sdate,
                     end=self.edate,
-                    interval='daily',
+                    interval="daily",
                 )
                 if self._validate_lseg_data(data, tickers):
                     data = (
                         data.melt(
                             ignore_index=False,
-                            var_name='RIC',
-                            value_name='value'
+                            var_name="RIC",
+                            value_name="value",
                         )
                         .dropna()
                         .reset_index()
                         .assign(field=field)
-                        .assign(source='LSEG')
-                        .assign(scale=FIELDS[field]['scale'])
-                        [['Date', 'RIC', 'source', 'field', 'scale', 'value']]
+                        .assign(source="LSEG")
+                        .assign(scale=FIELDS[field]["scale"])[
+                            [
+                                "Date",
+                                "RIC",
+                                "source",
+                                "field",
+                                "scale",
+                                "value",
+                            ]
+                        ]
                     )
-                    data = data.rename(columns={
-                        'Date': 'date', 'RIC': 'identifier'
-                    })
+                    data = data.rename(
+                        columns={"Date": "date", "RIC": "identifier"}
+                    )
                     return data
                 else:
                     logger.warning(
@@ -156,9 +166,7 @@ class LSEGPuller:
 
             except Exception as e:
                 last_exception = e
-                logger.warning(
-                    f"Error pulling data for {tickers}: {e}"
-                )
+                logger.warning(f"Error pulling data for {tickers}: {e}")
                 time.sleep(SLEEP)
                 attempt += 1
                 continue
@@ -198,8 +206,8 @@ class LSEGPuller:
         batches = []
         """Split tickers into batches."""
         for i in range(0, math.ceil(len(self.tickers) / self.batch_size)):
-            end = min((i+1) * self.batch_size, len(self.tickers))
-            batches.append(self.tickers[i * self.batch_size:end])
+            end = min((i + 1) * self.batch_size, len(self.tickers))
+            batches.append(self.tickers[i * self.batch_size : end])
         return batches
 
 
@@ -210,5 +218,5 @@ class LSEGPuller:
 # ----------------------------------------------------------------------------
 # =============================== MAIN =======================================
 # ----------------------------------------------------------------------------
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

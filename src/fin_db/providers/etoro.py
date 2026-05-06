@@ -16,9 +16,11 @@ import uuid
 import logging
 from pathlib import Path
 import time
+
 # Third Party Imports
 import pandas as pd
 import numpy as np
+
 # Local Imports
 from fin_db.helpers import to_datetime, DateLike
 from fin_db.queries import get_iid_mapping
@@ -36,23 +38,23 @@ API_SLEEP = 1
 
 # Used to transform the etoro acc statement
 STATEMENT_COLS_MAP = {
-    'Date': 'ts',
-    'Type': 'type',
-    'Position ID': 'position_id',
-    'Details': 'instrument_id',
-    'Units / Contracts': 'units',
-    'fee': 'fee',
-    'Amount': 'cashflow_usd'
+    "Date": "ts",
+    "Type": "type",
+    "Position ID": "position_id",
+    "Details": "instrument_id",
+    "Units / Contracts": "units",
+    "fee": "fee",
+    "Amount": "cashflow_usd",
 }
 
 STATEMENT_TYPES_MAP = {
-    'Open Position': 'open',
-    'Position closed': 'close',
-    'Deposit': 'deposit',
-    'Withdrawal': 'withdrawal',
-    'Dividend': 'dividend',
-    'Interest Payment': 'interest',
-    'corp action: Split': 'split',
+    "Open Position": "open",
+    "Position closed": "close",
+    "Deposit": "deposit",
+    "Withdrawal": "withdrawal",
+    "Dividend": "dividend",
+    "Interest Payment": "interest",
+    "corp action: Split": "split",
 }
 
 
@@ -69,23 +71,16 @@ class EtoroAPI:
         keys (dict): A dictionary containing the API and user keys.
     """
 
-    def __init__(
-        self,
-        x_api_key: str,
-        x_user_key: str
-    ):
-        self.keys = {
-            'api': x_api_key,
-            'user': x_user_key
-        }
+    def __init__(self, x_api_key: str, x_user_key: str):
+        self.keys = {"api": x_api_key, "user": x_user_key}
 
     def search(
         self,
         lookup,
-        field: str = 'instrumentId',
+        field: str = "instrumentId",
         return_fields: list[str] | None = None,
         ignore_internal: bool = True,
-        strict: bool = False
+        strict: bool = False,
     ) -> dict:
         """
         Searches for an instrument based on the provided lookup value and
@@ -120,7 +115,7 @@ class EtoroAPI:
         dict
             The instrument data if found, otherwise raises an exception.
         """
-        if field == 'instrumentId':
+        if field == "instrumentId":
             # This field uses int to lookup
             try:
                 lookup = int(lookup)
@@ -138,9 +133,7 @@ class EtoroAPI:
             )
 
         url = "https://public-api.etoro.com/api/v1/market-data/search"
-        params = {
-            field: lookup
-        }
+        params = {field: lookup}
 
         response = requests.get(url, headers=self._headers(), params=params)
 
@@ -149,17 +142,21 @@ class EtoroAPI:
             if strict:
                 # Find the exact match in the returned items list
                 instrument = next(
-                    (item for item in data['items']
-                     if item[field] == lookup), None
+                    (item for item in data["items"] if item[field] == lookup),
+                    None,
                 )
             elif ignore_internal:
                 # Return the first item from the search results
                 instrument = next(
-                    (item for item in data['items']
-                     if item['isInternalInstrument'] is False), None
+                    (
+                        item
+                        for item in data["items"]
+                        if item["isInternalInstrument"] is False
+                    ),
+                    None,
                 )
             else:
-                instrument = data['items'][0] if data['items'] else None
+                instrument = data["items"][0] if data["items"] else None
 
             if instrument and return_fields:
                 return {key: instrument[key] for key in return_fields}
@@ -179,7 +176,7 @@ class EtoroAPI:
         self,
         start_date: DateLike,
     ) -> list[dict]:
-        """"
+        """ "
         Retrieves the trade history starting from the specified date.
         More info on the API endpoint here:
         https://api-portal.etoro.com/api-reference/
@@ -220,10 +217,8 @@ class EtoroAPI:
         """
         start_date = to_datetime(start_date)
 
-        url = 'https://public-api.etoro.com/api/v1/trading/info/trade/history'
-        params = {
-            'minDate': start_date.isoformat()
-        }
+        url = "https://public-api.etoro.com/api/v1/trading/info/trade/history"
+        params = {"minDate": start_date.isoformat()}
         response = requests.get(url, headers=self._headers(), params=params)
         return response.json()
 
@@ -231,7 +226,7 @@ class EtoroAPI:
         self,
         start_date: DateLike,
     ) -> list[dict[str, Any]]:
-        """"
+        """ "
         Retrieves the portfolio information starting from the specified date.
         More info on the API endpoint here:
         https://api-portal.etoro.com/api-reference/
@@ -251,10 +246,8 @@ class EtoroAPI:
         """
         start_date = to_datetime(start_date)
 
-        url = 'https://public-api.etoro.com/api/v1/trading/info/portfolio'
-        params = {
-            'minDate': start_date.isoformat()
-        }
+        url = "https://public-api.etoro.com/api/v1/trading/info/portfolio"
+        params = {"minDate": start_date.isoformat()}
         response = requests.get(url, headers=self._headers(), params=params)
         return response.json()
 
@@ -287,109 +280,104 @@ class EtoroAPI:
         """
         pf = pd.read_excel(
             path,
-            sheet_name='Account Activity',
-            na_values=['-'],
-            parse_dates=['Date'],
-            date_format='%d/%m/%Y %H:%M:%S',
-            dtype={'Position ID': 'str'}
+            sheet_name="Account Activity",
+            na_values=["-"],
+            parse_dates=["Date"],
+            date_format="%d/%m/%Y %H:%M:%S",
+            dtype={"Position ID": "str"},
         )
 
         # ================================ FEES ===============================
-        pf['dd'] = pf['Date'].apply(lambda x: x.date())
+        pf["dd"] = pf["Date"].apply(lambda x: x.date())
         fees = (
             pf.loc[
-                pf['Type'].isin(['SDRT', 'Commission']),
-                ['dd', 'Position ID', 'Amount']
+                pf["Type"].isin(["SDRT", "Commission"]),
+                ["dd", "Position ID", "Amount"],
             ]
-            .groupby(['dd', 'Position ID'], as_index=False)['Amount']
+            .groupby(["dd", "Position ID"], as_index=False)["Amount"]
             .sum()
-            .rename(columns={'Amount': 'fee'})
+            .rename(columns={"Amount": "fee"})
         )
-        pf = pf.merge(fees, on=['dd', 'Position ID'], how='left')
-        pf['fee'] = pf['fee'].apply(lambda x: -x if x < 0 else x)
+        pf = pf.merge(fees, on=["dd", "Position ID"], how="left")
+        pf["fee"] = pf["fee"].apply(lambda x: -x if x < 0 else x)
 
         # ========================= STYLE CORRECTIONS =========================
         # Only keep data we want
         pf = pf.rename(columns=STATEMENT_COLS_MAP)
-        pf['type'] = pf['type'].map(STATEMENT_TYPES_MAP)
+        pf["type"] = pf["type"].map(STATEMENT_TYPES_MAP)
         pf = pf[list(STATEMENT_COLS_MAP.values())]
-        pf = pf.dropna(subset=['type'])
+        pf = pf.dropna(subset=["type"])
 
-        pf['cashflow_usd'] = np.where(
-            pf['type'] == 'open',
-            - pf['cashflow_usd'],
-            pf['cashflow_usd']
-        ) - pf['fee'].fillna(0)
+        pf["cashflow_usd"] = np.where(
+            pf["type"] == "open", -pf["cashflow_usd"], pf["cashflow_usd"]
+        ) - pf["fee"].fillna(0)
 
         # Correct the holding change col
-        pf['units'] = np.where(
-            pf['type'] == 'close',
-            - pf['units'],
-            pf['units']
+        pf["units"] = np.where(
+            pf["type"] == "close", -pf["units"], pf["units"]
         )
 
         # Add notes where relevant (for splits)
-        pf['notes'] = np.where(
-            pf['type'] == 'split',
-            pf['instrument_id'].str.split(' ').str[-1],
-            None
+        pf["notes"] = np.where(
+            pf["type"] == "split",
+            pf["instrument_id"].str.split(" ").str[-1],
+            None,
         )
 
         # ======================= INSTRUMENT ID MAPPING =======================
-        pf.loc[pf['type'] == 'deposit', 'instrument_id'] = pd.NA
-        pf['instrument_id'] = (
-            pf['instrument_id'].str.split('/').str[0].str.replace('.RTH', '')
+        pf.loc[pf["type"] == "deposit", "instrument_id"] = pd.NA
+        pf["instrument_id"] = (
+            pf["instrument_id"].str.split("/").str[0].str.replace(".RTH", "")
         )
 
         mapper = dict()
 
-        for id in pf['instrument_id'].dropna().unique():
+        for id in pf["instrument_id"].dropna().unique():
             mapper[id] = self.search(
-                    lookup=id,
-                    field='internalSymbolFull',
-                    return_fields=['instrumentId'],
-                    strict=False,
-                    ignore_internal=True
-            )['instrumentId']
+                lookup=id,
+                field="internalSymbolFull",
+                return_fields=["instrumentId"],
+                strict=False,
+                ignore_internal=True,
+            )["instrumentId"]
             time.sleep(API_SLEEP)
 
         ids = [v for v in mapper.values()]
-        to_iid = get_iid_mapping(ids, source='ETORO')
+        to_iid = get_iid_mapping(ids, source="ETORO")
 
         mapper = {k: to_iid.get(str(v)) for k, v in mapper.items()}
 
-        pf['instrument_id'] = pf['instrument_id'].map(mapper)
+        pf["instrument_id"] = pf["instrument_id"].map(mapper)
 
         # ============================== SPLITS ===============================
-        splits_window = pf.loc[pf['type'] == 'split']
+        splits_window = pf.loc[pf["type"] == "split"]
 
         # This is slow, but not a lot of splits so I like the readability
         for _, row in splits_window.iterrows():
             # Get the holdings at the time of the split
             holdings = (
                 pf.loc[
-                    (pf['ts'] < row['ts'])
-                    & (pf['position_id'] == row['position_id'])
+                    (pf["ts"] < row["ts"])
+                    & (pf["position_id"] == row["position_id"])
                 ]
-                .groupby('instrument_id')['units']
+                .groupby("instrument_id")["units"]
                 .cumsum()
                 .iloc[0]
             )
-            mutiplier = (
-                float(row['notes'].split(':')[0]) /
-                float(row['notes'].split(':')[1])
+            mutiplier = float(row["notes"].split(":")[0]) / float(
+                row["notes"].split(":")[1]
             )
             adjust = holdings * (mutiplier - 1)
-            pf.at[row.name, 'units'] = adjust
+            pf.at[row.name, "units"] = adjust
 
         return pf
 
     def _headers(self):
         """Returns the headers for the request"""
         return {
-            "x-api-key": self.keys['api'],
-            "x-user-key": self.keys['user'],
-            "x-request-id": str(uuid.uuid4())
+            "x-api-key": self.keys["api"],
+            "x-user-key": self.keys["user"],
+            "x-request-id": str(uuid.uuid4()),
         }
 
 
@@ -400,5 +388,5 @@ class EtoroAPI:
 # ----------------------------------------------------------------------------
 # =============================== MAIN =======================================
 # ----------------------------------------------------------------------------
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

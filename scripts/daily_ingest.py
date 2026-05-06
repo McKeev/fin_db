@@ -14,9 +14,11 @@ import datetime as dt
 import os
 from pathlib import Path
 from typing import Literal
+
 # Third Party Imports
 from dotenv import load_dotenv
 import pandas as pd
+
 # Local Imports
 import fin_db as fdb
 
@@ -26,17 +28,17 @@ import fin_db as fdb
 # ----------------------------------------------------------------------------
 
 _FIN_DB_DIR = Path(__file__).parent.parent
-_LOG_FILE = _FIN_DB_DIR / 'logs' / 'daily_ingest.log'
+_LOG_FILE = _FIN_DB_DIR / "logs" / "daily_ingest.log"
 _BATCH_SIZE = 5
 _MAX_ATTEMPTS = 3
 load_dotenv(_FIN_DB_DIR / "scripts/.env")
 fdb.setup_telebot(
-    token=os.getenv('TELEGRAM_BOT_TOKEN'),
-    chat_id=os.getenv('TELEGRAM_CHAT_ID'),
+    token=os.getenv("TELEGRAM_BOT_TOKEN"),
+    chat_id=os.getenv("TELEGRAM_CHAT_ID"),
 )
 logger = fdb.setup_logger(
-    'daily_ingest',
-    level='INFO',
+    "daily_ingest",
+    level="INFO",
     log_file=_LOG_FILE,
     telegram_critical=True,
 )
@@ -52,7 +54,7 @@ def etl(
     tickers: list[str],
     sdate: str,
     edate: str,
-    transform: Literal['normal', 'currency'] = 'normal',
+    transform: Literal["normal", "currency"] = "normal",
 ):
     """ETL function for Yahoo Finance data."""
 
@@ -64,79 +66,71 @@ def etl(
         max_attempts=_MAX_ATTEMPTS,
     )
 
-    df, failed = puller.histpull(
-        fields=fields,
-        return_failed=True
-    )
+    df, failed = puller.histpull(fields=fields, return_failed=True)
 
     if df.empty:
         logger.error("No data pulled for all tickers in batch")
         return
 
     # Need to change the tickers back to internal `instrument_id`s
-    needed_iids = list(set(df['identifier'].unique()) | set(failed))
+    needed_iids = list(set(df["identifier"].unique()) | set(failed))
     iid_mapping = fdb.queries.get_iid_mapping(
-        tickers=needed_iids,
-        source='YAHOO'
+        tickers=needed_iids, source="YAHOO"
     )
-    df['identifier'] = df['identifier'].map(iid_mapping)
-    df = df.rename(columns={'identifier': 'instrument_id'})
+    df["identifier"] = df["identifier"].map(iid_mapping)
+    df = df.rename(columns={"identifier": "instrument_id"})
 
-    if transform == 'currency':
+    if transform == "currency":
         # We pull the rate in indirect form for more precision,
         # but we to store it in direct form in the DB
-        df['value'] = 1 / df['value']
-        df['value'] = df['value'] / 0.00001  # Store as pipette
+        df["value"] = 1 / df["value"]
+        df["value"] = df["value"] / 0.00001  # Store as pipette
 
         # Create USD observations for each date in the df
-        dates = df['date'].unique()
-        usd_df = pd.DataFrame({
-            'instrument_id': 'CURUSDXUSDXXXXXXXXXX',
-            'field': 'close',
-            'date': dates,
-            'value': 100_000,  # 1 pipette in USD
-            'source': 'system',
-        })
+        dates = df["date"].unique()
+        usd_df = pd.DataFrame(
+            {
+                "instrument_id": "CURUSDXUSDXXXXXXXXXX",
+                "field": "close",
+                "date": dates,
+                "value": 100_000,  # 1 pipette in USD
+                "source": "system",
+            }
+        )
         df = pd.concat([df, usd_df], ignore_index=True)
 
     # Write to DB
-    fdb.queries.ingest_observations(
-        df=df,
-        commit=True
-    )
+    fdb.queries.ingest_observations(df=df, commit=True)
 
     if failed:
         fail_pct = len(failed) / len(tickers) * 100
         if fail_pct < 10:
             logger.error(
-                f'Failed to pull data for {len(failed)} of {len(tickers)} '
-                f'tickers ({fail_pct:.2f}%)'
+                f"Failed to pull data for {len(failed)} of {len(tickers)} "
+                f"tickers ({fail_pct:.2f}%)"
             )
         else:
             logger.critical(
-                f'Failed to pull data for {len(failed)} of {len(tickers)} '
-                f'tickers ({fail_pct:.2f}%)'
+                f"Failed to pull data for {len(failed)} of {len(tickers)} "
+                f"tickers ({fail_pct:.2f}%)"
             )
         # Construct a DataFrame for the failed tickers (with fields)
         failed_df = pd.DataFrame(
             {
-                'instrument_id': iid_mapping.get(ticker),
-                'field': field,
-                'source': 'YAHOO',
-                'error_message': error,
+                "instrument_id": iid_mapping.get(ticker),
+                "field": field,
+                "source": "YAHOO",
+                "error_message": error,
             }
             for ticker, error in failed.items()
             for field in fields
         )
 
-        fdb.queries.log_failed_ingest(
-                df=failed_df,
-                commit=True
-        )
+        fdb.queries.log_failed_ingest(df=failed_df, commit=True)
 
 
 def yahoo_ingest(today):
-    update_dict = fdb.queries.to_update(frequency='daily', source='YAHOO')
+    update_dict = fdb.queries.to_update(frequency="daily", source="YAHOO")
     sdate = today - dt.timedelta(days=30)
 
     for (asset_class, fields), tickers in update_dict.items():
@@ -144,13 +138,13 @@ def yahoo_ingest(today):
             f"Starting ingest for {len(tickers)} tickers of asset class "
             f"{asset_class} and fields {fields}."
         )
-        if asset_class == 'currency':
+        if asset_class == "currency":
             etl(
                 fields=list(fields),
                 tickers=tickers,
                 sdate=str(sdate),
                 edate=str(today),
-                transform='currency',
+                transform="currency",
             )
             # Refresh materialized view for currency pairs
             conn = fdb.session.db_conn()
@@ -164,7 +158,7 @@ def yahoo_ingest(today):
                 tickers=tickers,
                 sdate=str(sdate),
                 edate=str(today),
-                transform='normal',
+                transform="normal",
             )
         logger.info(
             f"Finished ingest for {len(tickers)} tickers of asset class "
@@ -185,8 +179,8 @@ def main():
 
     today = dt.date.today()
     fdb.open_session(
-            user='fin_db_app',
-            host='minicomp',
+        user="fin_db_app",
+        host="minicomp",
     )
     logger.info("Starting Yahoo Finance ingest.")
     yahoo_ingest(today)
@@ -206,9 +200,13 @@ def main():
     )
     if no_updates:
         no_updates = pd.DataFrame(no_updates)
-        no_updates = no_updates.groupby(
-            ['instrument_id', 'name', 'last_update']
-        )['field'].apply(tuple).reset_index()
+        no_updates = (
+            no_updates.groupby(["instrument_id", "name", "last_update"])[
+                "field"
+            ]
+            .apply(tuple)
+            .reset_index()
+        )
 
         formatted_no_updates = "\n".join(
             f"- {name} ({iid}), "
@@ -216,8 +214,9 @@ def main():
             f"Last updated {last_update} "
             f"({(today - last_update).days} "
             "days ago)"
-            for iid, name, last_update, fields
-            in no_updates.itertuples(index=False)
+            for iid, name, last_update, fields in no_updates.itertuples(
+                index=False
+            )
         )
         message = (
             "WARNING:\n"
@@ -234,7 +233,7 @@ def main():
 # ----------------------------------------------------------------------------
 # =============================== MAIN =======================================
 # ----------------------------------------------------------------------------
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         logger.info("Starting daily ingest job.")
         main()
