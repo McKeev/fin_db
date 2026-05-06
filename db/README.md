@@ -79,6 +79,22 @@ ENV_FILE=db/ops/.env bash db/migrations/run.sh 001
 
 ## Migrations
 
+### `008_fuzzy_ids.sql`
+
+Purpose: adds fuzzy matching support for instrument names and a normalized `simpler_name`.
+
+What it does:
+
+- Adds `simpler_name` column to `instruments` for normalized names used in fuzzy matching
+- Adds `simpler_name_normalize(text)` function to lowercase, unaccent, strip legal suffixes/filler words, and normalize punctuation
+- Backfills `simpler_name` for existing rows and maintains it with a `BEFORE INSERT OR UPDATE OF name` trigger
+- Adds a trigram GIN index `idx_instruments_simpler_name_trgm` on `simpler_name` for fast fuzzy searches
+- Adds a case-insensitive index `idx_instruments_ticker_lower` on `lower(internal_ticker)` for exact ticker lookups
+- Requires `pg_trgm` and `unaccent` extensions
+
+---
+
+
 ### `007_portfolio_support.sql`
 
 Purpose: adds portfolio activity storage and a holdings view.

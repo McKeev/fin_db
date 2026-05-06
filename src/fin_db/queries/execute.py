@@ -230,6 +230,49 @@ def check_updates(cutoff_date: str) -> list[dict[str, Any]]:
     ]
 
 
+def resolve_instruments(raw_inputs: str | list[str]) -> pd.DataFrame:
+    """
+    Resolve a list of raw input strings to their corresponding instruments in the
+    database, using both exact ticker matches and fuzzy name matching.
+
+    Parameters
+    ----------
+    raw_inputs : str | list[str]
+        A single raw input string or a list of raw input strings to resolve. Filter by
+        instrument id isna to get unmatched inputs.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with columns:
+        - `raw_input`: original input string provided by the caller.
+        - `instrument_id`: matched internal instrument identifier.
+        - `internal_ticker`: matched internal ticker.
+        - `name`: matched instrument name.
+        - `simpler_name`: normalized instrument name used for fuzzy matching.
+        - `asset_class`: matched instrument asset class.
+        - `name_score`: trigram similarity score for the name match.
+    """
+    if not isinstance(raw_inputs, list):
+        raw_inputs = [str(raw_inputs)]
+    result = query_read(
+        "resolve_instruments.sql", params={"raw_inputs": raw_inputs}
+    )
+    df = pd.DataFrame(
+        result,
+        columns=[
+            "raw_input",
+            "instrument_id",
+            "internal_ticker",
+            "name",
+            "simpler_name",
+            "asset_class",
+            "name_score",
+        ],
+    )
+    return df
+
+
 def get_hist(
     tickers: str | list[str],
     fields: str | list[str],
