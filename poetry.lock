@@ -73,6 +73,18 @@ astroid = ["astroid (>=2,<5)"]
 test = ["astroid (>=2,<5)", "pytest (<9.0)", "pytest-cov", "pytest-xdist"]
 
 [[package]]
+name = "asyncio"
+version = "4.0.0"
+description = "Deprecated backport of asyncio; use the stdlib package instead"
+optional = false
+python-versions = ">=3.4"
+groups = ["main"]
+files = [
+    {file = "asyncio-4.0.0-py3-none-any.whl", hash = "sha256:c1eddb0659231837046809e68103969b2bef8b0400d59cfa6363f6b5ed8cc88b"},
+    {file = "asyncio-4.0.0.tar.gz", hash = "sha256:570cd9e50db83bc1629152d4d0b7558d6451bb1bfd5dfc2e935d96fc2f40329b"},
+]
+
+[[package]]
 name = "beautifulsoup4"
 version = "4.14.3"
 description = "Screen-scraping library"
@@ -3017,4 +3029,4 @@ repair = ["scipy (>=1.6.3)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12"
-content-hash = "b3543d988a0d30d6a6762850efc6ad92d64e14fb09d02a87049003e211f35818"
+content-hash = "36d8f580e2fadb238ed20fcc6d0c7ef25bd160a3c65ee9134738d0be16ae156d"
