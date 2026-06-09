@@ -1,31 +1,26 @@
 # Expose submodules
-from . import helpers
-from . import providers
-from . import queries
-from . import constants
-
-# Expose key components at the package level
-from .session import open_session, close_session
+from . import constants, helpers, providers, queries
 from .async_session import (
-    open_async_session,
-    close_async_session,
-    async_db_conn,
-    AsyncSessionContext,
+    close_pool,
+    get_pool,
+    open_pool,
+)
+from .helpers import (
+    create_instrument_id,
+    get_telebot,
+    setup_logger,
+    setup_telebot,
 )
 from .providers import LSEGPuller, YFinPuller
-from .helpers import (
-    setup_logger,
-    create_instrument_id,
-    setup_telebot,
-    get_telebot,
-)
 from .queries import (
-    resolve_instruments,
     get_hist,
-    # Async queries
-    resolve_instruments_async,
     get_hist_async,
+    resolve_instruments,
+    resolve_instruments_async,
 )
+
+# Expose key components at the package level
+from .session import close_session, open_session
 
 __all__ = [
     # Submodules
@@ -36,7 +31,6 @@ __all__ = [
     # Classes
     "LSEGPuller",
     "YFinPuller",
-    "AsyncSessionContext",
     # Sync Functions
     "open_session",
     "close_session",
@@ -46,10 +40,11 @@ __all__ = [
     "get_telebot",
     "get_hist",
     "resolve_instruments",
-    # Async Functions
-    "open_async_session",
-    "close_async_session",
-    "async_db_conn",
+    # Async Pool Functions
+    "open_pool",
+    "close_pool",
+    "get_pool",
+    # Async Query Functions
     "get_hist_async",
     "resolve_instruments_async",
 ]

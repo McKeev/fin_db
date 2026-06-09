@@ -1,10 +1,10 @@
 """
 File Name: async_session.py
 Author: Cedric McKeever
-Date: 2026-03-13
+Date: 2026-06-09
 Description:
-Async implementation of database connection management using psycopg's async support.
-Implements a singleton async connection pool for use in async contexts.
+Async implementation of database connection management using psycopg's AsyncConnectionPool.
+This provides automatic connection pooling, health checks, and automatic reconnection.
 """
 
 # ----------------------------------------------------------------------------
@@ -15,7 +15,8 @@ import logging
 from typing import Optional
 
 # Third Party Imports
-import psycopg
+from psycopg import AsyncConnection
+from psycopg_pool import AsyncConnectionPool
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 # ============================= CONSTANTS ====================================
 # ----------------------------------------------------------------------------
 
-_async_conn: Optional[psycopg.AsyncConnection] = None
+_pool: Optional[AsyncConnectionPool] = None
 
 
 # ----------------------------------------------------------------------------
@@ -37,18 +38,23 @@ _async_conn: Optional[psycopg.AsyncConnection] = None
 # ----------------------------------------------------------------------------
 
 
-async def open_async_session(
+async def _create_pool(
     user: str,
     password: str | None = None,
     host: str = "minicomp",
     port: int = 5433,
     dbname: str = "fin_db",
-) -> None:
+    min_size: int = 10,
+    max_size: int = 20,
+) -> AsyncConnectionPool:
     """
-    Open a new async database session.
+    Create and return an async connection pool.
 
-    This creates a global async connection that can be used for async/await
-    database operations. Use this in your async startup code.
+    The pool automatically manages connection lifecycle, including:
+    - Reusing connections across requests
+    - Detecting and replacing stale connections
+    - Handling reconnection on failures
+    - Managing timeouts and resource limits
 
     Parameters
     ----------
@@ -62,106 +68,153 @@ async def open_async_session(
         Database port, by default 5433.
     dbname : str, optional
         Database name, by default "fin_db".
+    min_size : int, optional
+        Minimum number of connections to maintain, by default 10.
+    max_size : int, optional
+        Maximum number of connections, by default 20.
+
+    Returns
+    -------
+    AsyncConnectionPool
+        A connection pool ready to use.
+
+    Raises
+    ------
+    psycopg.OperationalError
+        If connection to database fails.
+    """
+    conninfo = (
+        f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
+        if password
+        else f"postgresql://{user}@{host}:{port}/{dbname}"
+    )
+
+    pool = AsyncConnectionPool(
+        conninfo,
+        min_size=min_size,
+        max_size=max_size,
+        connection_class=AsyncConnection,
+        open=False,
+        # Connection settings
+        kwargs={
+            "connect_timeout": "10",
+            "keepalives": "1",
+            "keepalives_idle": "30",
+        },
+    )
+
+    logger.info(
+        f"Connection pool created: {min_size}-{max_size} connections "
+        f"to {host}:{port}/{dbname}"
+    )
+
+    return pool
+
+
+async def open_pool(
+    user: str,
+    password: str | None = None,
+    host: str = "minicomp",
+    port: int = 5433,
+    dbname: str = "fin_db",
+    min_size: int = 10,
+    max_size: int = 20,
+) -> None:
+    """
+    Initialize the global async connection pool.
+
+    Call this once at application startup (e.g., in your Telegram bot's startup handler).
+
+    Parameters
+    ----------
+    user : str
+        Database user.
+    password : str | None, optional
+        Database password, by default None.
+    host : str, optional
+        Database host, by default "minicomp".
+    port : int, optional
+        Database port, by default 5433.
+    dbname : str, optional
+        Database name, by default "fin_db".
+    min_size : int, optional
+        Minimum pool size, by default 10.
+    max_size : int, optional
+        Maximum pool size, by default 20.
 
     Raises
     ------
     Exception
-        If a session is already open.
+        If a pool is already open.
+    psycopg.OperationalError
+        If connection to database fails.
+
+    Example
+    -------
+    >>> import fin_db as fdb
+    >>> await fdb.open_pool(user="user", password="pass")
     """
-    global _async_conn
-    if _async_conn is not None:
+    global _pool
+    if _pool is not None:
         raise Exception(
-            "An async session is already open. "
+            "A connection pool is already open. "
             "Please close it before opening a new one."
         )
-    _async_conn = await psycopg.AsyncConnection.connect(
-        dbname=dbname,
+
+    _pool = await _create_pool(
         user=user,
         password=password,
         host=host,
         port=port,
+        dbname=dbname,
+        min_size=min_size,
+        max_size=max_size,
     )
-    logger.info("Async database session opened successfully.")
+    await _pool.open()
+    logger.info("Global connection pool opened successfully.")
 
 
-async def async_db_conn() -> psycopg.AsyncConnection:
+def get_pool() -> AsyncConnectionPool:
     """
-    Get the current async database connection.
+    Get the global async connection pool.
 
     Returns
     -------
-    psycopg.AsyncConnection
-        The global async connection.
+    AsyncConnectionPool
+        The global connection pool.
 
     Raises
     ------
     Exception
-        If no async session is open.
+        If no pool is open.
+
+    Example
+    -------
+    >>> pool = get_pool()
+    >>> async with await pool.connection() as conn:
+    ...     async with conn.cursor() as cur:
+    ...         await cur.execute("SELECT 1")
     """
-    if _async_conn is None:
+    if _pool is None:
         raise Exception(
-            "No async session is open. "
-            "Please open a session first (`await open_async_session()`)."
+            "No connection pool is open. "
+            "Please open a pool first (`await open_pool()`)."
         )
-    return _async_conn
+    return _pool
 
 
-async def close_async_session() -> None:
+async def close_pool() -> None:
     """
-    Close the async database session.
+    Close the global async connection pool.
+
+    Call this when shutting down your application (e.g., in Telegram bot's shutdown handler).
+
+    Example
+    -------
+    >>> await close_pool()
     """
-    global _async_conn
-    if _async_conn is not None:
-        await _async_conn.aclose()
-        _async_conn = None
-        logger.info("Async database session closed successfully.")
-
-
-# Context manager for temporary async connections (alternative to global state)
-class AsyncSessionContext:
-    """
-    Context manager for async database connections.
-
-    Usage:
-    ------
-    async with AsyncSessionContext(user="user", password="pass") as conn:
-        # Use conn for queries
-        pass
-    """
-
-    def __init__(
-        self,
-        user: str,
-        password: str | None = None,
-        host: str = "minicomp",
-        port: int = 5433,
-        dbname: str = "fin_db",
-    ):
-        self.user = user
-        self.password = password
-        self.host = host
-        self.port = port
-        self.dbname = dbname
-        self.conn: Optional[psycopg.AsyncConnection] = None
-
-    async def __aenter__(self) -> psycopg.AsyncConnection:
-        self.conn = await psycopg.AsyncConnection.connect(
-            dbname=self.dbname,
-            user=self.user,
-            password=self.password,
-            host=self.host,
-            port=self.port,
-        )
-        return self.conn
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.conn is not None:
-            await self.conn.aclose()
-
-
-# ----------------------------------------------------------------------------
-# =============================== MAIN =======================================
-# ----------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    pass
+    global _pool
+    if _pool is not None:
+        await _pool.close()
+        _pool = None
+        logger.info("Connection pool closed successfully.")

@@ -1,27 +1,29 @@
 """
 File Name: async_execute.py
 Author: Cedric McKeever
-Date: 2026-03-13
+Date: 2026-06-09
 Description:
 Async versions of query execution functions.
 These functions are designed for use in async contexts (e.g., async Telegram bots).
+Works with AsyncConnectionPool for automatic reconnection and health checks.
 """
 
 # ----------------------------------------------------------------------------
 # ============================== IMPORTS =====================================
 # ----------------------------------------------------------------------------
 
-from typing import Any
 import logging
+from typing import Any
+
+import pandas as pd
 
 # Third Party Imports
 from psycopg import sql
-import pandas as pd
 
 # Local Imports
+from fin_db.async_session import get_pool
 from fin_db.constants import ROOT_DIR
-from fin_db.async_session import async_db_conn
-from fin_db.helpers import valid_sources, to_datetime, DateLike
+from fin_db.helpers import DateLike, to_datetime, valid_sources
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +51,9 @@ async def query_read_async(
     """
     Execute a SQL query from a file asynchronously.
 
+    The connection is automatically managed by the pool and released
+    after the query completes.
+
     Parameters
     ----------
     query_file : str
@@ -71,10 +76,15 @@ async def query_read_async(
         query_obj = query_obj.format(
             **{k: sql.Identifier(v) for k, v in identifiers.items()}
         )
-    async with await async_db_conn().cursor() as cur:
-        await cur.execute(query_obj, params)
-        logger.debug(f"Executed async query from {query_file} with params: {params}")
-        return await cur.fetchall()
+
+    pool = get_pool()
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(query_obj, params)
+            logger.debug(
+                f"Executed async query from {query_file} with params: {params}"
+            )
+            return await cur.fetchall()
 
 
 async def query_write_async(
@@ -85,6 +95,9 @@ async def query_write_async(
 ) -> None:
     """
     Execute a SQL write query from a file asynchronously.
+
+    The connection is automatically managed by the pool and released
+    after the query completes.
 
     Parameters
     ----------
@@ -105,22 +118,24 @@ async def query_write_async(
         query_obj = query_obj.format(
             **{k: sql.Identifier(v) for k, v in identifiers.items()}
         )
-    conn = await async_db_conn()
-    async with await conn.cursor() as cur:
-        if isinstance(params, list):
-            await cur.executemany(query_obj, params)
-        else:
-            await cur.execute(query_obj, params)
-        logger.info(
-            f"Executed async write query from {query_file} "
-            f"({cur.rowcount} rows affected)."
-        )
-        if commit:
-            await conn.commit()
-            logger.info("Transaction committed.")
-        else:
-            await conn.rollback()
-            logger.info("Transaction rolled back.")
+
+    pool = get_pool()
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            if isinstance(params, list):
+                await cur.executemany(query_obj, params)
+            else:
+                await cur.execute(query_obj, params)
+            logger.info(
+                f"Executed async write query from {query_file} "
+                f"({cur.rowcount} rows affected)."
+            )
+            if commit:
+                await conn.commit()
+                logger.info("Transaction committed.")
+            else:
+                await conn.rollback()
+                logger.info("Transaction rolled back.")
 
 
 # ------------------------------- READ QUERIES --------------------------------
@@ -239,6 +254,7 @@ async def get_hist_async(
     Get historical data for a list of tickers and fields asynchronously.
 
     This is the main async function you'll use in your Telegram bot.
+    The pool automatically handles connection management and reconnection.
 
     Parameters
     ----------
@@ -265,13 +281,13 @@ async def get_hist_async(
 
     Example
     --------
-    >>> async def get_stock_data(ticker):
-    ...     await open_async_session(user="your_user", password="your_pass")
-    ...     try:
-    ...         data = await get_hist_async(ticker, "price", "2024-01-01", "2024-12-31")
-    ...         return data
-    ...     finally:
-    ...         await close_async_session()
+    >>> import fin_db as fdb
+    >>> await fdb.open_pool(user="your_user", password="your_pass")
+    >>> try:
+    ...     data = await fdb.get_hist_async("AAPL", "price", "2024-01-01", "2024-12-31")
+    ...     print(data)
+    ... finally:
+    ...     await fdb.close_pool()
     """
     # Normalize inputs
     if type(tickers) is not list:
@@ -360,7 +376,9 @@ async def to_update_async(
 # ------------------------------ WRITE QUERIES --------------------------------
 
 
-async def ingest_observations_async(df: pd.DataFrame, commit: bool = True) -> None:
+async def ingest_observations_async(
+    df: pd.DataFrame, commit: bool = True
+) -> None:
     """
     Ingest a DataFrame of observations into the database asynchronously.
 
@@ -387,7 +405,9 @@ async def ingest_observations_async(df: pd.DataFrame, commit: bool = True) -> No
     )
 
 
-async def log_failed_ingest_async(df: pd.DataFrame, commit: bool = True) -> None:
+async def log_failed_ingest_async(
+    df: pd.DataFrame, commit: bool = True
+) -> None:
     """
     Log failed ingestions into the database asynchronously.
 
@@ -403,7 +423,9 @@ async def log_failed_ingest_async(df: pd.DataFrame, commit: bool = True) -> None
     )
 
 
-async def ingest_instruments_async(df: pd.DataFrame, commit: bool = True) -> None:
+async def ingest_instruments_async(
+    df: pd.DataFrame, commit: bool = True
+) -> None:
     """
     Ingest a DataFrame of instruments into the database asynchronously.
 
@@ -421,7 +443,9 @@ async def ingest_instruments_async(df: pd.DataFrame, commit: bool = True) -> Non
     )
 
 
-async def ingest_attributes_async(df: pd.DataFrame, commit: bool = True) -> None:
+async def ingest_attributes_async(
+    df: pd.DataFrame, commit: bool = True
+) -> None:
     """
     Ingest a DataFrame of attributes into the database asynchronously.
 
@@ -455,7 +479,9 @@ async def ingest_updates_async(df: pd.DataFrame, commit: bool = True) -> None:
     )
 
 
-async def ingest_identifiers_async(df: pd.DataFrame, commit: bool = True) -> None:
+async def ingest_identifiers_async(
+    df: pd.DataFrame, commit: bool = True
+) -> None:
     """
     Ingest a DataFrame of identifiers into the database asynchronously.
 
